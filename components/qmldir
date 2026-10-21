@@ -1,0 +1,10 @@
+singleton Theme 1.0 Theme.qml
+singleton Popout 1.0 Popout.qml
+singleton Notifications 1.0 Notifications.qml
+singleton StayAwake 1.0 StayAwake.qml
+NotificationToast 1.0 NotificationToast.qml
+Module 1.0 Module.qml
+Glyph 1.0 Glyph.qml
+PopupButton 1.0 PopupButton.qml
+PopupRow 1.0 PopupRow.qml
+VolumeSlider 1.0 VolumeSlider.qml

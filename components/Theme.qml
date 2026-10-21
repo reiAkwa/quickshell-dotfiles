@@ -1,0 +1,53 @@
+pragma Singleton
+
+import Quickshell
+import QtQuick
+
+// Palette and measurements copied from ~/.config/waybar/style.css.
+Singleton {
+  id: root
+
+  // Bar
+  readonly property color background: "#f0f8ff"
+  readonly property color foreground: "#3b3b3b"
+  readonly property color accent: "#56a0d1"
+  readonly property int barHeight: 44
+  readonly property int borderWidth: 3
+
+  // Modules
+  readonly property color window: "#dae2e9"
+  readonly property color clock: "#dae2e9"
+  readonly property color audio: "#cfb886"
+  readonly property color network: "#5b7f92"
+  readonly property color bluetooth: "#7897c7"
+  readonly property color cpu: "#56a0d1"
+  readonly property color memory: "#7fad9c"
+  readonly property color battery: "#cba0e3"
+  readonly property color tray: "#a8b4c0"
+  readonly property color notification: "#b6aec9"
+  readonly property color notificationActive: "#e0a458"
+  readonly property color awayActive: "#ffd54f"
+  readonly property color dnd: "#9fb8ad"
+  readonly property color dndOn: "#d97b7b"
+  readonly property color dndOnForeground: "#f0f8ff"
+
+  readonly property int moduleHeight: 41
+  readonly property int moduleRadius: 10
+  readonly property int modulePadding: 10
+
+  // GTK resolves the CSS to 11pt in the original bar. At 96 DPI that is
+  // 14.666px; 14px produces the same 7px Iosevka advance width.
+  readonly property int fontSize: 14
+  readonly property string fontFamily: "IosevkaTerm Nerd Font"
+
+  // Waybar's window module: max-length 50, ellipsized at 367px.
+  readonly property int windowTextMaxWidth: 367
+
+  // Workspaces use icon chips instead of plain numbers.
+  readonly property color workspaceInactive: "#dae2e9"
+  readonly property int workspaceButtonWidth: 41
+
+  // Tray defaults
+  readonly property int trayIconSize: 16
+}
+
