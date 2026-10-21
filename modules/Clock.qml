@@ -194,7 +194,7 @@ Module {
 
           Text {
             text: Qt.formatDateTime(root.currentDate, "HH:mm")
-            color: "#6d7c8a"
+            color: Theme.textSecondary
             font.family: Theme.fontFamily
             font.pixelSize: 11
           }
@@ -208,7 +208,7 @@ Module {
         Rectangle {
           Layout.fillWidth: true
           Layout.preferredHeight: 1
-          color: "#c9d6e2"
+          color: Theme.divider
         }
 
         RowLayout {
@@ -262,7 +262,7 @@ Module {
               Text {
                 anchors.centerIn: parent
                 text: weekdayCell.modelData
-                color: "#6d7c8a"
+                color: Theme.textSecondary
                 font.family: Theme.fontFamily
                 font.pixelSize: 10
                 font.bold: true

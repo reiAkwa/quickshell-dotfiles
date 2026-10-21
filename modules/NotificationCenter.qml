@@ -170,7 +170,7 @@ Module {
           topPadding: 8
           bottomPadding: 8
           text: "No notifications"
-          color: "#6d7c8a"
+          color: Theme.textSecondary
           font.family: Theme.fontFamily
           font.pixelSize: 12
         }
@@ -205,7 +205,7 @@ Module {
                 Rectangle {
                   anchors.fill: parent
                   radius: 6
-                  color: rowHover.hovered ? "#e4eef7" : "transparent"
+                  color: rowHover.hovered ? Theme.rowHover : "transparent"
                 }
 
                 HoverHandler {
@@ -270,7 +270,7 @@ Module {
                         text: row.modelData.appName !== ""
                           ? row.modelData.appName
                           : "Notification"
-                        color: "#6d7c8a"
+                        color: Theme.textSecondary
                         font.family: Theme.fontFamily
                         font.pixelSize: 10
                         elide: Text.ElideRight
@@ -279,7 +279,7 @@ Module {
 
                       Text {
                         text: Notifications.timeAgo(row.modelData.id, root.nowMs)
-                        color: "#6d7c8a"
+                        color: Theme.textSecondary
                         font.family: Theme.fontFamily
                         font.pixelSize: 10
                         textFormat: Text.PlainText
@@ -301,7 +301,7 @@ Module {
                       Layout.fillWidth: true
                       visible: text !== ""
                       text: row.modelData.body
-                      color: "#5b6773"
+                      color: Theme.textStrong
                       font.family: Theme.fontFamily
                       font.pixelSize: 11
                       wrapMode: Text.Wrap
@@ -337,7 +337,7 @@ Module {
 
                   Text {
                     text: "\uf00d"
-                    color: closeMouse.containsMouse ? Theme.foreground : "#9aa7b3"
+                    color: closeMouse.containsMouse ? Theme.foreground : Theme.textMuted
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                     Layout.alignment: Qt.AlignTop

@@ -47,7 +47,7 @@ Module {
   visible: adapter !== null
   text: powered ? "" : " Off"
   leadingIcon: "\uf293"
-  textColor: powered ? Theme.foreground : "#7b8794"
+  textColor: powered ? Theme.foreground : Theme.textDisabled
   moduleColor: powered
     ? (containsMouse ? Qt.lighter(Theme.bluetooth, 1.12) : Theme.bluetooth)
     : Theme.window
@@ -329,7 +329,7 @@ Module {
             text: root.adapter === null
               ? "Unavailable"
               : (root.powered ? "On" : "Off")
-            color: root.powered ? Theme.accent : "#6d7c8a"
+            color: root.powered ? Theme.accent : Theme.textSecondary
             font.family: Theme.fontFamily
             font.pixelSize: 11
           }
@@ -338,14 +338,14 @@ Module {
         Rectangle {
           Layout.fillWidth: true
           Layout.preferredHeight: 1
-          color: "#c9d6e2"
+          color: Theme.divider
         }
 
         Rectangle {
           Layout.fillWidth: true
           Layout.preferredHeight: 34
           radius: 6
-          color: adapterToggleMouse.containsMouse && root.adapter ? "#e4eef7" : "transparent"
+          color: adapterToggleMouse.containsMouse && root.adapter ? Theme.rowHover : "transparent"
 
           RowLayout {
             anchors.fill: parent
@@ -357,7 +357,7 @@ Module {
 
             Text {
               text: "\uf293"
-              color: root.powered ? Theme.accent : "#6d7c8a"
+              color: root.powered ? Theme.accent : Theme.textSecondary
               font.family: Theme.fontFamily
               font.pixelSize: 16
             }
@@ -374,7 +374,7 @@ Module {
               Layout.preferredWidth: 32
               Layout.preferredHeight: 18
               radius: 9
-              color: root.powered ? Theme.accent : "#c8d2dc"
+              color: root.powered ? Theme.accent : Theme.inactive
 
               Rectangle {
                 width: 14
@@ -382,7 +382,7 @@ Module {
                 radius: 7
                 y: 2
                 x: root.powered ? parent.width - width - 2 : 2
-                color: "#ffffff"
+                color: Theme.accentText
 
                 Behavior on x {
                   NumberAnimation { duration: 100 }
@@ -414,7 +414,7 @@ Module {
           Text {
             Layout.fillWidth: true
             text: "Devices"
-            color: "#6d7c8a"
+            color: Theme.textSecondary
             font.family: Theme.fontFamily
             font.pixelSize: 10
             font.bold: true
@@ -423,7 +423,7 @@ Module {
           Text {
             visible: root.adapter !== null && root.adapter.discovering
             text: "Scanning…"
-            color: "#6d7c8a"
+            color: Theme.textSecondary
             font.family: Theme.fontFamily
             font.pixelSize: 10
           }
@@ -454,7 +454,7 @@ Module {
               width: deviceColumn.width
               visible: !root.powered
               text: "Bluetooth is off"
-              color: "#6d7c8a"
+              color: Theme.textSecondary
               font.family: Theme.fontFamily
               font.pixelSize: 12
               leftPadding: 8
@@ -468,7 +468,7 @@ Module {
               text: root.adapter !== null && root.adapter.discovering
                 ? "Scanning for devices…"
                 : "No devices found"
-              color: "#6d7c8a"
+              color: Theme.textSecondary
               font.family: Theme.fontFamily
               font.pixelSize: 12
               leftPadding: 8
@@ -489,7 +489,7 @@ Module {
                   ? Theme.accent
                   : (modelData.bonded || modelData.paired
                     ? Theme.foreground
-                    : "#6d7c8a")
+                    : Theme.textSecondary)
                 title: root.deviceName(modelData)
                 subtitle: root.deviceSubtitle(modelData)
                 actionText: root.deviceAction(modelData)
@@ -528,7 +528,7 @@ Module {
           Layout.fillWidth: true
           visible: root.errorText !== ""
           text: root.errorText
-          color: "#b44"
+          color: Theme.danger
           font.family: Theme.fontFamily
           font.pixelSize: 11
           wrapMode: Text.WordWrap

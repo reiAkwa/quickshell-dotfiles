@@ -11,12 +11,12 @@ Item {
   property bool muted: false
   property bool interactive: true
   property color fillColor: Theme.accent
-  property color trackColor: "#c9d6e2"
+  property color trackColor: Theme.divider
 
   signal moved(real value)
 
   readonly property real clampedValue: Math.max(0, Math.min(1, root.value))
-  readonly property color activeColor: root.muted ? "#9aa7b3" : root.fillColor
+  readonly property color activeColor: root.muted ? Theme.textMuted : root.fillColor
 
   implicitHeight: 18
 

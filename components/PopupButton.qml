@@ -17,8 +17,8 @@ Rectangle {
   implicitHeight: 22
   radius: height / 2
   color: !available
-    ? "#c8d2dc"
-    : (primary ? Theme.accent : (mouse.containsMouse ? "#cfdeea" : "#dce7f0"))
+    ? Theme.inactive
+    : (primary ? Theme.accent : (mouse.containsMouse ? Theme.surfaceHover : Theme.surface))
   opacity: available ? 1 : 0.65
 
   Text {

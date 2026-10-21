@@ -443,7 +443,7 @@ Module {
             text: root.mode === "wifi"
               ? "Wi-Fi"
               : (root.mode === "ethernet" ? "Wired" : "Offline")
-            color: root.device ? Theme.accent : "#6d7c8a"
+            color: root.device ? Theme.accent : Theme.textSecondary
             font.family: Theme.fontFamily
             font.pixelSize: 11
           }
@@ -452,14 +452,14 @@ Module {
         Rectangle {
           Layout.fillWidth: true
           Layout.preferredHeight: 1
-          color: "#c9d6e2"
+          color: Theme.divider
         }
 
         Rectangle {
           Layout.fillWidth: true
           Layout.preferredHeight: 34
           radius: 6
-          color: wifiToggleMouse.containsMouse && root.wifiDevice ? "#e4eef7" : "transparent"
+          color: wifiToggleMouse.containsMouse && root.wifiDevice ? Theme.rowHover : "transparent"
 
           RowLayout {
             anchors.fill: parent
@@ -471,7 +471,7 @@ Module {
 
             Text {
               text: "\uf1eb"
-              color: root.wifiUsable ? Theme.accent : "#6d7c8a"
+              color: root.wifiUsable ? Theme.accent : Theme.textSecondary
               font.family: Theme.fontFamily
               font.pixelSize: 16
             }
@@ -488,7 +488,7 @@ Module {
               text: root.wifiDevice === null
                 ? "Unavailable"
                 : (Networking.wifiEnabled ? "On" : "Off")
-              color: "#6d7c8a"
+              color: Theme.textSecondary
               font.family: Theme.fontFamily
               font.pixelSize: 11
             }
@@ -497,7 +497,7 @@ Module {
               Layout.preferredWidth: 32
               Layout.preferredHeight: 18
               radius: 9
-              color: Networking.wifiEnabled ? Theme.accent : "#c8d2dc"
+              color: Networking.wifiEnabled ? Theme.accent : Theme.inactive
 
               Rectangle {
                 width: 14
@@ -505,7 +505,7 @@ Module {
                 radius: 7
                 y: 2
                 x: Networking.wifiEnabled ? parent.width - width - 2 : 2
-                color: "#ffffff"
+                color: Theme.accentText
 
                 Behavior on x {
                   NumberAnimation { duration: 100 }
@@ -535,7 +535,7 @@ Module {
           Text {
             Layout.fillWidth: true
             text: "Wi-Fi networks"
-            color: "#6d7c8a"
+            color: Theme.textSecondary
             font.family: Theme.fontFamily
             font.pixelSize: 10
             font.bold: true
@@ -570,7 +570,7 @@ Module {
               width: listColumn.width
               visible: root.wifiDevice === null
               text: "No Wi-Fi adapter"
-              color: "#6d7c8a"
+              color: Theme.textSecondary
               font.family: Theme.fontFamily
               font.pixelSize: 12
               leftPadding: 8
@@ -582,7 +582,7 @@ Module {
               width: listColumn.width
               visible: root.wifiDevice !== null && !Networking.wifiEnabled
               text: "Wi-Fi is off"
-              color: "#6d7c8a"
+              color: Theme.textSecondary
               font.family: Theme.fontFamily
               font.pixelSize: 12
               leftPadding: 8
@@ -595,7 +595,7 @@ Module {
               visible: root.wifiUsable
                 && root.sortedWifiNetworks.length === 0
               text: "No networks found"
-              color: "#6d7c8a"
+              color: Theme.textSecondary
               font.family: Theme.fontFamily
               font.pixelSize: 12
               leftPadding: 8
@@ -612,7 +612,7 @@ Module {
 
                 width: listColumn.width
                 icon: "\uf1eb"
-                iconColor: modelData.connected ? Theme.accent : "#6d7c8a"
+                iconColor: modelData.connected ? Theme.accent : Theme.textSecondary
                 title: modelData.name
                 subtitle: root.networkSubtitle(modelData)
                 actionText: root.networkAction(modelData)
@@ -647,7 +647,7 @@ Module {
               Text {
                 Layout.fillWidth: true
                 text: "Wired"
-                color: "#6d7c8a"
+                color: Theme.textSecondary
                 font.family: Theme.fontFamily
                 font.pixelSize: 10
                 font.bold: true
@@ -662,7 +662,7 @@ Module {
 
                 width: listColumn.width
                 icon: "\udb80\ude00"
-                iconColor: modelData.connected ? Theme.accent : "#6d7c8a"
+                iconColor: modelData.connected ? Theme.accent : Theme.textSecondary
                 title: modelData.name
                 subtitle: root.wiredSubtitle(modelData)
                 actionText: modelData.connected
@@ -680,7 +680,7 @@ Module {
           Layout.fillWidth: true
           visible: root.errorText !== ""
           text: root.errorText
-          color: "#b44"
+          color: Theme.danger
           font.family: Theme.fontFamily
           font.pixelSize: 11
           wrapMode: Text.WordWrap
@@ -691,7 +691,7 @@ Module {
           Layout.preferredHeight: root.passwordNetwork ? passwordColumn.implicitHeight + 16 : 0
           visible: root.passwordNetwork !== null
           radius: 6
-          color: "#e4eef7"
+          color: Theme.rowHover
 
           ColumnLayout {
             id: passwordColumn
@@ -717,9 +717,9 @@ Module {
               Layout.fillWidth: true
               Layout.preferredHeight: 28
               radius: 4
-              color: "#ffffff"
+              color: Theme.accentText
               border.width: 1
-              border.color: passwordInput.activeFocus ? Theme.accent : "#c9d6e2"
+              border.color: passwordInput.activeFocus ? Theme.accent : Theme.divider
 
               TextInput {
                 id: passwordInput

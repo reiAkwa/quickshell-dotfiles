@@ -270,8 +270,8 @@ Module {
               ? "Unavailable"
               : (root.muted ? "Muted" : "Output " + root.volume + "%")
             color: root.sink === null
-              ? "#6d7c8a"
-              : (root.muted ? "#b44" : Theme.accent)
+              ? Theme.textSecondary
+              : (root.muted ? Theme.danger : Theme.accent)
             font.family: Theme.fontFamily
             font.pixelSize: 11
           }
@@ -280,7 +280,7 @@ Module {
         Rectangle {
           Layout.fillWidth: true
           Layout.preferredHeight: 1
-          color: "#c9d6e2"
+          color: Theme.divider
         }
 
         RowLayout {
@@ -291,7 +291,7 @@ Module {
             Layout.preferredWidth: 20
             horizontalAlignment: Text.AlignHCenter
             text: root.muted ? "\uf466" : root.iconForVolume(root.volume)
-            color: root.muted ? "#b44" : Theme.accent
+            color: root.muted ? Theme.danger : Theme.accent
             font.family: Theme.fontFamily
             font.pixelSize: 16
           }
@@ -313,7 +313,7 @@ Module {
             Text {
               Layout.fillWidth: true
               text: "Output"
-              color: "#6d7c8a"
+              color: Theme.textSecondary
               font.family: Theme.fontFamily
               font.pixelSize: 10
             }
@@ -321,7 +321,7 @@ Module {
 
           Text {
             text: root.muted ? "Muted" : root.volume + "%"
-            color: root.muted ? "#9aa7b3" : "#6d7c8a"
+            color: root.muted ? Theme.textMuted : Theme.textSecondary
             font.family: Theme.fontFamily
             font.pixelSize: 11
           }
@@ -367,7 +367,7 @@ Module {
         Rectangle {
           Layout.fillWidth: true
           Layout.preferredHeight: 1
-          color: "#c9d6e2"
+          color: Theme.divider
         }
 
         RowLayout {
@@ -378,7 +378,7 @@ Module {
           Text {
             Layout.fillWidth: true
             text: "APPLICATIONS"
-            color: "#6d7c8a"
+            color: Theme.textSecondary
             font.family: Theme.fontFamily
             font.pixelSize: 10
             font.bold: true
@@ -386,7 +386,7 @@ Module {
 
           Text {
             text: root.playbackStreams.length
-            color: "#6d7c8a"
+            color: Theme.textSecondary
             font.family: Theme.fontFamily
             font.pixelSize: 10
           }
@@ -411,7 +411,7 @@ Module {
               width: appsColumn.width
               visible: root.playbackStreams.length === 0
               text: "No applications playing audio"
-              color: "#6d7c8a"
+              color: Theme.textSecondary
               font.family: Theme.fontFamily
               font.pixelSize: 12
               leftPadding: 8
@@ -432,7 +432,7 @@ Module {
                 Rectangle {
                   anchors.fill: parent
                   radius: 6
-                  color: streamHover.hovered ? "#e4eef7" : "transparent"
+                  color: streamHover.hovered ? Theme.rowHover : "transparent"
                 }
 
                 HoverHandler {
@@ -453,7 +453,7 @@ Module {
                     horizontalAlignment: Text.AlignHCenter
                     text: root.streamIcon(streamRow.modelData)
                     color: streamRow.modelData.audio.muted
-                      ? "#9aa7b3"
+                      ? Theme.textMuted
                       : Theme.accent
                     font.family: Theme.fontFamily
                     font.pixelSize: 15
@@ -477,7 +477,7 @@ Module {
                       Layout.fillWidth: true
                       text: root.streamSubtitle(streamRow.modelData)
                       visible: text !== ""
-                      color: "#6d7c8a"
+                      color: Theme.textSecondary
                       font.family: Theme.fontFamily
                       font.pixelSize: 10
                       elide: Text.ElideRight
@@ -490,8 +490,8 @@ Module {
                       ? "Muted"
                       : Math.round(streamRow.modelData.audio.volume * 100) + "%"
                     color: streamRow.modelData.audio.muted
-                      ? "#9aa7b3"
-                      : "#6d7c8a"
+                      ? Theme.textMuted
+                      : Theme.textSecondary
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                   }
@@ -524,7 +524,7 @@ Module {
         Rectangle {
           Layout.fillWidth: true
           Layout.preferredHeight: 1
-          color: "#c9d6e2"
+          color: Theme.divider
         }
 
         RowLayout {
@@ -535,7 +535,7 @@ Module {
             Layout.preferredWidth: 20
             horizontalAlignment: Text.AlignHCenter
             text: root.micMuted ? "\uf131" : "\uf130"
-            color: root.micMuted ? "#b44" : Theme.accent
+            color: root.micMuted ? Theme.danger : Theme.accent
             font.family: Theme.fontFamily
             font.pixelSize: 16
           }
@@ -559,7 +559,7 @@ Module {
             Text {
               Layout.fillWidth: true
               text: "Microphone"
-              color: "#6d7c8a"
+              color: Theme.textSecondary
               font.family: Theme.fontFamily
               font.pixelSize: 10
             }
@@ -567,7 +567,7 @@ Module {
 
           Text {
             text: root.micMuted ? "Muted" : root.micVolume + "%"
-            color: root.micMuted ? "#9aa7b3" : "#6d7c8a"
+            color: root.micMuted ? Theme.textMuted : Theme.textSecondary
             font.family: Theme.fontFamily
             font.pixelSize: 11
           }

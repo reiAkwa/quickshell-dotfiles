@@ -18,9 +18,9 @@ Rectangle {
       return Theme.accent;
     switch (notification.urgency) {
     case NotificationUrgency.Critical:
-      return "#d9534f";
+      return Theme.alert;
     case NotificationUrgency.Low:
-      return "#9aa7b3";
+      return Theme.textMuted;
     default:
       return Theme.accent;
     }
@@ -109,7 +109,7 @@ Rectangle {
           text: root.notification.appName !== ""
             ? root.notification.appName
             : "Notification"
-          color: "#6d7c8a"
+          color: Theme.textSecondary
           font.family: Theme.fontFamily
           font.pixelSize: 10
           elide: Text.ElideRight
@@ -118,7 +118,7 @@ Rectangle {
 
         Text {
           text: "\uf00d"
-          color: closeMouse.containsMouse ? Theme.foreground : "#9aa7b3"
+          color: closeMouse.containsMouse ? Theme.foreground : Theme.textMuted
           font.family: Theme.fontFamily
           font.pixelSize: 11
           textFormat: Text.PlainText
@@ -148,7 +148,7 @@ Rectangle {
         Layout.fillWidth: true
         visible: text !== ""
         text: root.notification.body
-        color: "#5b6773"
+        color: Theme.textStrong
         font.family: Theme.fontFamily
         font.pixelSize: 12
         wrapMode: Text.Wrap

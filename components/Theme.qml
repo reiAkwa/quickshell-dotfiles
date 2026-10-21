@@ -27,9 +27,24 @@ Singleton {
   readonly property color notification: "#b6aec9"
   readonly property color notificationActive: "#e0a458"
   readonly property color awayActive: "#ffd54f"
-  readonly property color dnd: "#9fb8ad"
   readonly property color dndOn: "#d97b7b"
   readonly property color dndOnForeground: "#f0f8ff"
+
+  // Shared control surfaces and text roles used by the popouts and toast
+  // cards. Kept separate from the per-module palette above so a popout can
+  // adopt one role without inheriting a module color.
+  readonly property color textStrong: "#5b6773"
+  readonly property color textSecondary: "#6d7c8a"
+  readonly property color textMuted: "#9aa7b3"
+  readonly property color textDisabled: "#7b8794"
+  readonly property color divider: "#c9d6e2"
+  readonly property color surface: "#dce7f0"
+  readonly property color surfaceHover: "#cfdeea"
+  readonly property color rowHover: "#e4eef7"
+  readonly property color inactive: "#c8d2dc"
+  readonly property color accentText: "#ffffff"
+  readonly property color danger: "#b44"
+  readonly property color alert: "#d9534f"
 
   readonly property int moduleHeight: 41
   readonly property int moduleRadius: 10

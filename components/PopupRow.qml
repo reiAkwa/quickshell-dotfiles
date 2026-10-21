@@ -23,7 +23,7 @@ Item {
   Rectangle {
     anchors.fill: parent
     radius: 6
-    color: mouse.containsMouse && root.interactive ? "#e4eef7" : "transparent"
+    color: mouse.containsMouse && root.interactive ? Theme.rowHover : "transparent"
   }
 
   MouseArea {
@@ -76,7 +76,7 @@ Item {
         Layout.fillWidth: true
         text: root.subtitle
         visible: text !== ""
-        color: "#6d7c8a"
+        color: Theme.textSecondary
         font.family: Theme.fontFamily
         font.pixelSize: 10
         elide: Text.ElideRight
