@@ -44,7 +44,7 @@ PanelWindow {
 
     MouseArea {
       anchors.fill: parent
-      onClicked: Popout.dismiss()
+      onClicked: Popout.dismissFor(bar.screen.name)
     }
 
     Row {

@@ -18,7 +18,10 @@ Singleton {
       root.current = "";
   }
 
-  function dismiss() {
-    root.current = "";
+  // Close only the popout owned by one screen. Keys are "<screen>:<domain>",
+  // so a click on another monitor's bar must not dismiss this one.
+  function dismissFor(screen) {
+    if (screen !== "" && root.current.startsWith(screen + ":"))
+      root.current = "";
   }
 }
