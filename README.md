@@ -1,6 +1,6 @@
 # niri
 
-用 Quickshell 0.3.2 复刻 `~/.config/waybar/{config.jsonc,style.css}` 的顶部栏。在原配置基础上，网络模块增加了可交互面板，新增了蓝牙连接按钮，把 `pulseaudio` 模块升级成支持应用音量与麦克风控制的混音器，并用 Quickshell 自己的 `NotificationServer` 取代 mako，提供右上角通知弹窗和通知中心，免打扰也并入了铃铛模块；铃铛右侧新增了保持屏幕常亮的“离开中”开关。电池模块与 ROG Control Center 联动：左键唤起控制中心，右键切换电源模式，并实时显示 asusd 当前的 Quiet/Balanced/Performance 模式。CPU 与内存模块不再调用外部 htop，两个图标都打开同一个 Quickshell 任务管理器面板。另有一个 `Alt+Space` 唤出的 Spotlight 应用启动器。
+用 Quickshell 0.3.2 复刻 `~/.config/waybar/{config.jsonc,style.css}` 的顶部栏。在原配置基础上，网络模块增加了可交互面板，新增了蓝牙连接按钮，把 `pulseaudio` 模块升级成支持应用音量与麦克风控制的混音器，并用 Quickshell 自己的 `NotificationServer` 取代 mako，提供右上角通知弹窗和通知中心，免打扰也并入了铃铛模块；铃铛右侧新增了保持屏幕常亮的“离开中”开关。电池模块与 ROG Control Center 联动：左键唤起控制中心，右键切换电源模式，并实时显示 asusd 当前的 Quiet/Balanced/Performance 模式。CPU 与内存模块不再调用外部 htop，两个图标都打开同一个 Quickshell 任务管理器面板。另有一个 `Mod+Space` / `Alt+Space` 唤出的 Spotlight 启动器，支持应用搜索、`!` 执行命令和 `=` 算数。
 
 ## 运行
 
@@ -48,12 +48,12 @@ niri/
 ├── shell.qml                  # 入口：为每块屏幕创建 Bar 和通知弹窗层，并创建全局 Spotlight
 ├── Bar.qml                    # PanelWindow、背景/底边、左中右三段布局
 ├── NotificationPopup.qml      # 右上角 toast 层（每屏一个，layer-shell overlay）
-├── Spotlight.qml              # Alt+Space 应用启动器（模糊搜索 + 启动频率排序）
+├── Spotlight.qml              # Mod+Space/Alt+Space 启动器（应用搜索 + ! 命令 + = 算数）
 ├── Niri.qml                   # Singleton：订阅 niri JSON event-stream
 ├── Stats.qml                  # Singleton：/proc/stat 与 /proc/meminfo（顶栏 10s/30s）
 ├── Tasks.qml                  # Singleton：任务管理器 /proc 采样、进程排序与结束进程
 ├── components/
-│   ├── qmldir                 # 注册 Theme / Popout / Module / Glyph / PopupRow / PopupButton / VolumeSlider / Notifications / NotificationToast / StayAwake
+│   ├── qmldir                 # 注册 Theme / Popout / Module / Glyph / PopupRow / PopupButton / VolumeSlider / SpotlightAction / Notifications / NotificationToast / StayAwake
 │   ├── Theme.qml              # 颜色、尺寸、字体（从 style.css 抄来）
 │   ├── Module.qml             # 通用圆角模块底 + 文本/前后图标 + 鼠标事件
 │   ├── Glyph.qml              # Nerd Font 图标半宽单元（见下文）
@@ -63,7 +63,8 @@ niri/
 │   ├── NotificationToast.qml  # 单条 toast 卡片（图标/正文/操作/自动超时）
 │   ├── PopupRow.qml           # 网络/蓝牙弹层里的条目
 │   ├── PopupButton.qml        # 弹层里的小按钮
-│   └── VolumeSlider.qml       # 混音器里的音量滑条
+│   ├── VolumeSlider.qml       # 混音器里的音量滑条
+│   └── SpotlightAction.qml    # Spotlight 的 ! 命令 / = 算数操作行
 └── modules/
     ├── Workspaces.qml         # niri/workspaces（终端/浏览器/QQ 图标，其余圆点）
     ├── ActiveWindow.qml       # niri/window
@@ -156,14 +157,17 @@ niri/
   - 状态在 `StayAwake` 单例里共享，多屏时每块屏幕都会各自创建一个 inhibitor surface
   - 开关使用 `PersistentProperties` 保存，配置热重载（包括修改 `Away.qml`/`Bar.qml`）后仍保持开启，不会因为编辑 QML 而悄悄失效
 - 电池模块没有自定义 tooltip、弹出面板或媒体控制；只有上述点击/右键动作和电源模式图标联动。CPU/内存模块共用任务管理器面板，不再需要额外的 htop 窗口。
-- Spotlight（`Alt+Space`，niri bind 执行 `qs -c niri ipc call spotlight toggle`）：
-  - 屏幕中央偏上的浮层，带半透明遮罩；打开时用 `WlrKeyboardFocus.Exclusive` 独占键盘，`Esc`、再次按 `Alt+Space` 或点击遮罩关闭
-  - 输入即时过滤 `DesktopEntries` 里的应用，匹配名称、GenericName、Keywords、Categories、Comment 和 desktop id；支持子序列模糊匹配，空格分隔多个关键词
+- Spotlight（`Mod+Space` / `Alt+Space`，niri bind 执行 `qs -c niri ipc call spotlight toggle`）：
+  - 屏幕中央偏上的浮层，带半透明遮罩；打开时用 `WlrKeyboardFocus.Exclusive` 独占键盘，`Esc`、再次按快捷键或点击遮罩关闭
+  - 默认模式即时过滤 `DesktopEntries` 里的应用，匹配名称、GenericName、Keywords、Categories、Comment 和 desktop id；支持子序列模糊匹配，空格分隔多个关键词
   - `↑`/`↓`、`PageUp`/`PageDown`、`Ctrl+N`/`Ctrl+P`、`Tab`/`Shift+Tab` 移动选中项，`Enter` 启动；鼠标点击条目也可启动
   - 空查询按启动次数排序；启动次数保存在 `Quickshell.statePath("spotlight-usage.json")`，常用的应用会自动排到前面
   - 启动走 `DesktopEntry.execute()`；图标用 `Quickshell.iconPath` 解析，绝对路径图标按 `file://` 处理
+  - `!` 前缀进入命令模式：`!` 后面的内容交给 `sh -c`，`Enter` 立即执行并关闭；没有额外的确认步骤
+  - `=` 前缀进入算数模式：支持 `+ - * / % ^`、括号、正负号、小数和科学计数法，输入时实时显示结果；`Enter` 把结果复制到剪贴板并关闭
+  - 空查询时脚注会提示 `! command` 和 `= calculator`；命令/算数模式也会显示对应的操作提示
   - 多屏时在 niri 焦点窗口所在的输出打开；没有焦点窗口时回退到第一块屏幕
-  - 原来的 `Mod+Space` 仍然保留为 rofi 的启动入口，两者互不影响
+  - `Mod+Space` 已从 rofi drun 迁移到 Spotlight；`Mod+V` 的剪贴板历史仍然使用 `cliphist | rofi`
 
 ## 视觉复刻的关键点
 
@@ -195,7 +199,9 @@ UPower ────────────> Battery.qml
 Battery.qml ──> niri focus-window / rog-control-center（左键）
 Battery.qml ──> asusctl profile next（右键）
 StatusNotifier ────> Tray.qml
-DesktopEntries ────> Spotlight.qml（模糊匹配 + 启动频率）
+DesktopEntries ────> Spotlight.qml（应用搜索 + 启动频率）
+Spotlight.qml ─────> sh -c（! 命令）
+Spotlight.qml ─────> Quickshell.clipboardText（= 结果复制）
 Away.qml ──> StayAwake.qml（全局状态）──> IdleInhibitor（每块屏幕的 1x1 overlay surface）
 D-Bus Notifications ──> Notifications.qml ──┬─> NotificationPopup.qml（toast）
                                              └─> NotificationCenter.qml（历史）
@@ -225,7 +231,10 @@ D-Bus Notifications ──> Notifications.qml ──┬─> NotificationPopup.qm
 - `End` 只发送 SIGTERM，权限不足或进程已退出时不会在面板里显示错误；需要 SIGKILL 时仍需使用终端。PID 1 的结束按钮被禁用。
 - 电池模块的电源模式图标依赖 ASUS 的 `/sys/firmware/acpi/platform_profile`；文件不存在时左侧图标留空，电量显示不受影响。右键切换依赖 `asusd`/`asusctl`，左键打开依赖 `rog-control-center`，这些动作在非 ROG 机器上不会生效。
 - “离开中”状态用 `PersistentProperties` 跨配置热重载保留；`qs` 完全重启或重新登录后会回到关闭状态。`IdleInhibitor` 依赖合成器的 idle-inhibit 支持（niri 支持）；它只阻止空闲导致的关屏/锁屏，不会阻止显式挂起或合盖休眠。inhibitor 挂在一个 1x1 透明 overlay surface 上，而不是顶栏上，所以即使全屏窗口遮住了顶栏也仍然有效。
-- Spotlight 只搜索 `DesktopEntries` 里的 `.desktop` 应用，不搜索文件、窗口，也不执行 shell 命令或计算表达式；`NoDisplay=true` 的辅助入口（URL handler、portal 等）会被过滤。查询只做大小写/重音归一化和子序列匹配，没有拼音或拼写纠错。
+- Spotlight 的默认模式只搜索 `DesktopEntries` 里的 `.desktop` 应用，不搜索文件或窗口；`NoDisplay=true` 的辅助入口（URL handler、portal 等）会被过滤。查询只做大小写/重音归一化和子序列匹配，没有拼音或拼写纠错。
+- `!` 命令模式通过 `sh -c` 直接执行，输入后 `Enter` 立即运行，没有确认步骤；因为没有挂终端，需要交互或 stdout 的命令（如 `htop`）看不到输出，也不提供命令历史。
+- `=` 算数模式只支持数字、`+ - * / % ^`、正负号和括号，不支持函数、常量或变量；除零和非法表达式会在结果行里提示，结果只复制到剪贴板，不写入历史。
+- `Mod+Space` 的 rofi drun 入口已替换为 Spotlight；`Mod+V` 的剪贴板历史仍然使用 `cliphist | rofi`。
 - Spotlight 的启动次数写在 `~/.local/state/quickshell/by-shell/<shell-id>/spotlight-usage.json`，shell id 由配置路径决定；移动或改名配置目录后历史会丢失，删掉该文件即可重置排序。
-- `Alt+Space` 由 niri 的 bind 触发（`spawn "qs" "-c" "niri" "ipc" "call" "spotlight" "toggle"`）。Quickshell 没运行时按快捷键不会有反应；`qs ipc` 需要通过 `-c niri` 选择这个配置实例。
+- `Mod+Space` / `Alt+Space` 由 niri 的 bind 触发（两者都是 `spawn "qs" "-c" "niri" "ipc" "call" "spotlight" "toggle"`）。Quickshell 没运行时按快捷键不会有反应；`qs ipc` 需要通过 `-c niri` 选择这个配置实例。
 - Spotlight 打开时会占据整个屏幕的输入层，打开期间其他应用的鼠标点击不会穿透；关闭后 niri 会把键盘焦点还给原来的窗口。

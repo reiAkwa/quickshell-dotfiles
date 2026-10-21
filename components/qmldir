@@ -8,3 +8,4 @@ Glyph 1.0 Glyph.qml
 PopupButton 1.0 PopupButton.qml
 PopupRow 1.0 PopupRow.qml
 VolumeSlider 1.0 VolumeSlider.qml
+SpotlightAction 1.0 SpotlightAction.qml

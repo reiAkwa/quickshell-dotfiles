@@ -8,9 +8,9 @@ import Quickshell.Wayland
 import Quickshell.Widgets
 import "components"
 
-// Alt+Space application launcher. niri maps the key to
-// `qs -c niri ipc call spotlight toggle`, so the overlay itself owns no
-// hotkey: opening/closing always goes through the same IPC entry point.
+// Application launcher with !command and =calculator modes. niri maps
+// Mod+Space/Alt+Space to `qs -c niri ipc call spotlight toggle`, so the
+// overlay itself owns no hotkey: opening/closing always goes through IPC.
 PanelWindow {
   id: root
 
@@ -23,7 +23,58 @@ PanelWindow {
 
   readonly property int rowHeight: 46
   readonly property int maxVisibleRows: 8
-  readonly property int visibleRows: Math.max(1, Math.min(results.length, maxVisibleRows))
+  readonly property int visibleRows: root.mode === "apps"
+    ? Math.max(1, Math.min(results.length, maxVisibleRows))
+    : 1
+
+  // Leading ! switches to shell-command mode, leading = to the calculator.
+  // Anything else is an application search.
+  readonly property string trimmedQuery: root.query.trim()
+  readonly property string mode: {
+    if (root.trimmedQuery.startsWith("!"))
+      return "command";
+    if (root.trimmedQuery.startsWith("="))
+      return "calc";
+    return "apps";
+  }
+  readonly property string commandText: root.mode === "command"
+    ? root.trimmedQuery.slice(1).trim()
+    : ""
+  readonly property string expression: root.mode === "calc"
+    ? root.trimmedQuery.slice(1).trim()
+    : ""
+  readonly property var calc: root.mode === "calc" ? root.evaluate(root.expression) : null
+  readonly property bool calcOk: root.calc !== null && root.calc.ok
+  readonly property string calcTitle: {
+    if (root.calc === null)
+      return "";
+    if (root.calc.ok)
+      return root.formatNumber(root.calc.value);
+    return root.calc.empty ? "Type an expression" : "Invalid expression";
+  }
+  readonly property string calcSubtitle: {
+    if (root.calc === null)
+      return "";
+    if (root.calc.ok)
+      return root.expression;
+    return root.calc.empty ? "e.g. = (12 + 3) * 4" : root.calc.error;
+  }
+  readonly property string footerInfo: {
+    if (root.mode === "command")
+      return "Shell command";
+    if (root.mode === "calc")
+      return "Calculator";
+    if (root.trimmedQuery === "")
+      return root.results.length + " apps · ! command · = calculator";
+    return root.results.length + (root.results.length === 1 ? " app" : " apps");
+  }
+  readonly property string footerHint: {
+    if (root.mode === "command")
+      return root.commandText !== "" ? "Enter run · Esc close" : "Esc close";
+    if (root.mode === "calc")
+      return root.calcOk ? "Enter copy · Esc close" : "Esc close";
+    return "↑↓ navigate · Enter launch · Esc close";
+  }
 
   // noDisplay entries are helpers (URL handlers, portals, ...) that should not
   // appear in a launcher. Entries without a name cannot be rendered usefully.
@@ -57,6 +108,138 @@ PanelWindow {
     return typeof text.normalize === "function"
       ? text.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
       : text;
+  }
+
+  function formatNumber(value) {
+    if (!Number.isFinite(value))
+      return "Not a number";
+    if (value === 0)
+      return "0";
+    if (Number.isInteger(value))
+      return String(value);
+    // Trim binary floating-point noise: 0.1 + 0.2 should read as 0.3.
+    return String(Number(value.toPrecision(12)));
+  }
+
+  // Recursive-descent parser for the "=" mode. eval() would let a stray
+  // expression run arbitrary JavaScript, so the calculator only understands
+  // numbers, + - * / % ^, unary signs and parentheses.
+  function evaluate(source) {
+    const input = source
+      .replace(/×/g, "*")
+      .replace(/÷/g, "/")
+      .replace(/−/g, "-");
+    let index = 0;
+
+    function fail(message) {
+      throw new Error(message);
+    }
+
+    function skipSpaces() {
+      while (index < input.length && /\s/.test(input[index]))
+        index++;
+    }
+
+    function parseNumber() {
+      skipSpaces();
+      const match = /^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/.exec(input.slice(index));
+      if (!match)
+        fail("Expected a number");
+      index += match[0].length;
+      return Number(match[0]);
+    }
+
+    function parsePrimary() {
+      skipSpaces();
+      if (input[index] === "(") {
+        index++;
+        const value = parseExpression();
+        skipSpaces();
+        if (input[index] !== ")")
+          fail("Missing )");
+        index++;
+        return value;
+      }
+      return parseNumber();
+    }
+
+    function parsePower() {
+      const base = parsePrimary();
+      skipSpaces();
+      if (input[index] === "^") {
+        index++;
+        // Right-associative, and 2^-3 must parse the sign as part of the
+        // exponent rather than as a subtraction.
+        return Math.pow(base, parseUnary());
+      }
+      return base;
+    }
+
+    function parseUnary() {
+      skipSpaces();
+      if (input[index] === "+") {
+        index++;
+        return parseUnary();
+      }
+      if (input[index] === "-") {
+        index++;
+        return -parseUnary();
+      }
+      return parsePower();
+    }
+
+    function parseTerm() {
+      let value = parseUnary();
+      while (true) {
+        skipSpaces();
+        const op = input[index];
+        if (op !== "*" && op !== "/" && op !== "%")
+          break;
+        index++;
+        const rhs = parseUnary();
+        if (op === "*") {
+          value *= rhs;
+        } else if (op === "/") {
+          if (rhs === 0)
+            fail("Division by zero");
+          value /= rhs;
+        } else {
+          if (rhs === 0)
+            fail("Modulo by zero");
+          value %= rhs;
+        }
+      }
+      return value;
+    }
+
+    function parseExpression() {
+      let value = parseTerm();
+      while (true) {
+        skipSpaces();
+        const op = input[index];
+        if (op !== "+" && op !== "-")
+          break;
+        index++;
+        const rhs = parseTerm();
+        value = op === "+" ? value + rhs : value - rhs;
+      }
+      return value;
+    }
+
+    if (input === "")
+      return { ok: false, empty: true, error: "Type an expression" };
+
+    try {
+      const value = parseExpression();
+      skipSpaces();
+      if (index < input.length)
+        fail("Unexpected character");
+      if (!Number.isFinite(value))
+        fail("Result is not a number");
+      return { ok: true, value: value };
+    } catch (error) {
+      return { ok: false, empty: false, error: String(error.message) };
+    }
   }
 
   // Returns a match score, or null when the token is not a subsequence of the
@@ -161,6 +344,12 @@ PanelWindow {
   }
 
   function refresh() {
+    if (root.mode !== "apps") {
+      root.results = [];
+      root.selectedIndex = 0;
+      return;
+    }
+
     const text = root.normalize(root.query).trim();
     let entries;
 
@@ -250,7 +439,31 @@ PanelWindow {
     usageStore.setText(JSON.stringify(next));
   }
 
+  function runCommand() {
+    if (root.commandText === "")
+      return;
+    // Same shell rofi/niri spawn-sh use, so pipes and redirections work.
+    Quickshell.execDetached(["sh", "-c", root.commandText]);
+    root.close();
+  }
+
+  function copyResult() {
+    if (!root.calcOk)
+      return;
+    Quickshell.clipboardText = root.calcTitle;
+    root.close();
+  }
+
   function launchSelected() {
+    if (root.mode === "command") {
+      root.runCommand();
+      return;
+    }
+    if (root.mode === "calc") {
+      root.copyResult();
+      return;
+    }
+
     const entry = root.results[root.selectedIndex];
     if (!entry)
       return;
@@ -464,13 +677,6 @@ PanelWindow {
               textFormat: Text.PlainText
             }
           }
-
-          Text {
-            text: "Alt+Space"
-            color: Theme.textMuted
-            font.family: Theme.fontFamily
-            font.pixelSize: 10
-          }
         }
       }
 
@@ -488,6 +694,7 @@ PanelWindow {
           id: resultList
 
           anchors.fill: parent
+          visible: root.mode === "apps"
           topMargin: 4
           bottomMargin: 4
           model: root.results
@@ -581,9 +788,36 @@ PanelWindow {
           }
         }
 
+        SpotlightAction {
+          anchors.fill: parent
+          visible: root.mode === "command"
+          symbol: "!"
+          title: root.commandText !== "" ? root.commandText : "Run a shell command"
+          subtitle: root.commandText !== "" ? "Run with sh -c" : "Type a command after !"
+          actionText: "Run"
+          active: root.commandText !== ""
+          onActivated: root.runCommand()
+        }
+
+        SpotlightAction {
+          anchors.fill: parent
+          visible: root.mode === "calc"
+          symbol: "="
+          title: root.calcTitle
+          subtitle: root.calcSubtitle
+          actionText: "Copy"
+          active: root.calcOk
+          activeTitleSize: 16
+          inactiveBackground: Theme.surface
+          inactiveTitleColor: root.calc !== null && root.calc.empty
+            ? Theme.textSecondary
+            : Theme.danger
+          onActivated: root.copyResult()
+        }
+
         Text {
           anchors.centerIn: parent
-          visible: root.results.length === 0
+          visible: root.mode === "apps" && root.results.length === 0
           text: root.query.trim() === ""
             ? "No applications found"
             : "No matches for \"" + root.query.trim() + "\""
@@ -614,7 +848,7 @@ PanelWindow {
 
           Text {
             Layout.fillWidth: true
-            text: root.results.length + (root.results.length === 1 ? " app" : " apps")
+            text: root.footerInfo
             color: Theme.textMuted
             font.family: Theme.fontFamily
             font.pixelSize: 10
@@ -623,7 +857,7 @@ PanelWindow {
           }
 
           Text {
-            text: "↑↓ navigate · Enter launch · Esc close"
+            text: root.footerHint
             color: Theme.textMuted
             font.family: Theme.fontFamily
             font.pixelSize: 10
