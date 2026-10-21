@@ -1,6 +1,7 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
 import Quickshell.Services.Notifications
 
 // One toast in NotificationPopup.qml. Hovering pauses the auto-expire timer,
