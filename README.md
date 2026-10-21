@@ -1,6 +1,6 @@
 # migrate_from_waybar
 
-用 Quickshell 0.3.2 复刻 `~/.config/waybar/{config.jsonc,style.css}` 的顶部栏。在原配置基础上，网络模块增加了可交互面板，新增了蓝牙连接按钮，把 `pulseaudio` 模块升级成支持应用音量与麦克风控制的混音器，并用 Quickshell 自己的 `NotificationServer` 取代 mako，提供右上角通知弹窗和通知中心，免打扰也并入了铃铛模块；铃铛右侧新增了保持屏幕常亮的“离开中”开关。
+用 Quickshell 0.3.2 复刻 `~/.config/waybar/{config.jsonc,style.css}` 的顶部栏。在原配置基础上，网络模块增加了可交互面板，新增了蓝牙连接按钮，把 `pulseaudio` 模块升级成支持应用音量与麦克风控制的混音器，并用 Quickshell 自己的 `NotificationServer` 取代 mako，提供右上角通知弹窗和通知中心，免打扰也并入了铃铛模块；铃铛右侧新增了保持屏幕常亮的“离开中”开关。电池模块与 ROG Control Center 联动：左键唤起控制中心，右键切换电源模式，并实时显示 asusd 当前的 Quiet/Balanced/Performance 模式。CPU 与内存模块不再调用外部 htop，两个图标都打开同一个 Quickshell 任务管理器面板。
 
 ## 运行
 
@@ -49,7 +49,8 @@ migrate_from_waybar/
 ├── Bar.qml                    # PanelWindow、背景/底边、左中右三段布局
 ├── NotificationPopup.qml      # 右上角 toast 层（每屏一个，layer-shell overlay）
 ├── Niri.qml                   # Singleton：订阅 niri JSON event-stream
-├── Stats.qml                  # Singleton：/proc/stat 与 /proc/meminfo
+├── Stats.qml                  # Singleton：/proc/stat 与 /proc/meminfo（顶栏 10s/30s）
+├── Tasks.qml                  # Singleton：任务管理器 /proc 采样、进程排序与结束进程
 ├── components/
 │   ├── qmldir                 # 注册 Theme / Popout / Module / Glyph / PopupRow / PopupButton / VolumeSlider / Notifications / NotificationToast / StayAwake
 │   ├── Theme.qml              # 颜色、尺寸、字体（从 style.css 抄来）
@@ -69,9 +70,10 @@ migrate_from_waybar/
     ├── Audio.qml              # pulseaudio（Pipewire）+ 应用/麦克风混音器
     ├── Network.qml            # network（NetworkManager + /proc/net/dev + Wi-Fi/有线面板）
     ├── Bluetooth.qml          # 新增：蓝牙开关、扫描、连接/配对
-    ├── Cpu.qml                # cpu
-    ├── Memory.qml             # memory
-    ├── Battery.qml            # battery（UPower）
+    ├── Cpu.qml                # cpu + 任务管理器入口
+    ├── Memory.qml             # memory + 任务管理器入口
+    ├── TaskManagerPanel.qml   # 新增：CPU/内存共用的任务管理器面板
+    ├── Battery.qml            # battery（UPower）+ ROG Control Center 联动
     ├── NotificationCenter.qml # 铃铛 + 通知历史 + 免打扰开关
     ├── Away.qml               # 新增：离开中开关 + Wayland IdleInhibitor
     └── Tray.qml               # tray（StatusNotifier）
@@ -87,9 +89,9 @@ migrate_from_waybar/
 | `pulseaudio` | `modules/Audio.qml` | `Quickshell.Services.Pipewire`（默认输出/麦克风/应用流） |
 | `network` | `modules/Network.qml` | `Quickshell.Networking` + `/proc/net/dev` |
 | （新增）蓝牙 | `modules/Bluetooth.qml` | `Quickshell.Bluetooth`（BlueZ） |
-| `cpu` | `modules/Cpu.qml` + `Stats.qml` | `/proc/stat`，10s |
-| `memory` | `modules/Memory.qml` + `Stats.qml` | `/proc/meminfo`，30s |
-| `battery` | `modules/Battery.qml` | `Quickshell.Services.UPower` |
+| `cpu` | `modules/Cpu.qml` + `Stats.qml` + `TaskManagerPanel.qml` | `/proc/stat`，顶栏 10s、面板 2s |
+| `memory` | `modules/Memory.qml` + `Stats.qml` + `TaskManagerPanel.qml` | `/proc/meminfo`，顶栏 30s、面板 2s |
+| `battery` | `modules/Battery.qml` | `Quickshell.Services.UPower` + `/sys/firmware/acpi/platform_profile` |
 | `custom/dnd` | `modules/NotificationCenter.qml` | 并入铃铛；Quickshell 通知服务内部标志 |
 | `tray` | `modules/Tray.qml` | `Quickshell.Services.SystemTray` |
 | （新增）通知 | `NotificationPopup.qml` + `modules/NotificationCenter.qml` | `Quickshell.Services.Notifications` |
@@ -123,6 +125,18 @@ migrate_from_waybar/
   - 面板内开关适配器、开始/停止扫描
   - 点击设备连接/断开；未配对的设备会先配对再连接
   - 右键模块快速开关蓝牙适配器
+- CPU / 内存模块（左键打开任务管理器）：
+  - 两个图标打开同一个面板；点击另一个图标只移动面板位置，不会关闭；再次点击同一个图标则关闭
+  - 面板每 2 秒用 `Quickshell.Io.Process` 读取 `/proc/stat`、`/proc/meminfo` 和每个进程的 `/proc/<pid>/stat`，不再启动 `wezterm -e htop`
+  - 顶部显示整体 CPU、核心数、内存与 swap；进程列表显示名称、PID、CPU 和 RSS，可按 CPU / Memory / Name 排序
+  - 进程 CPU 是两次采样之间的 jiffies 差值，按单核百分比显示，和 htop 一样可以超过 100%
+  - 行内 `End` 按钮第一次点击变成 `Confirm`，3 秒内再点发送 SIGTERM；PID 1 不可结束
+  - 点击面板外或按 `Esc` 关闭；关闭后停止进程采样，顶栏的 CPU/内存模块继续按原间隔刷新
+- 电池模块（ROG 联动）：
+  - 左侧图标实时显示 asusd 当前电源模式：月亮 = Quiet、天平 = Balanced、仪表 = Performance
+  - 左键打开 ROG Control Center：窗口已存在时通过 `niri msg action focus-window` 前置，没有窗口时再启动 `rog-control-center`
+  - 右键执行 `asusctl profile next`，按 asusd 的顺序切换电源模式
+  - 模式图标直接监听 `/sys/firmware/acpi/platform_profile`，所以在 ROG Control Center 里改模式也会立即反映到顶栏
 - 通知：
   - 新通知从屏幕右上角弹出，顶栏下方 `8px`，最多同时显示 3 条，新的在上
   - 默认 6 秒后自动消失，鼠标悬停时暂停计时；应用指定 `expire_timeout` 时按其值（最多 10 秒）
@@ -140,7 +154,7 @@ migrate_from_waybar/
   - 再点一次关闭，释放 inhibitor，恢复正常的空闲计时
   - 状态在 `StayAwake` 单例里共享，多屏时每块屏幕都会各自创建一个 inhibitor surface
   - 开关使用 `PersistentProperties` 保存，配置热重载（包括修改 `Away.qml`/`Bar.qml`）后仍保持开启，不会因为编辑 QML 而悄悄失效
-- 除网络、蓝牙、音频、通知中心、时钟月历和离开中开关外，没有加入电池/CPU/内存的自定义 tooltip、弹出面板、媒体控制等额外功能。
+- 电池模块没有自定义 tooltip、弹出面板或媒体控制；只有上述点击/右键动作和电源模式图标联动。CPU/内存模块共用任务管理器面板，不再需要额外的 htop 窗口。
 
 ## 视觉复刻的关键点
 
@@ -163,10 +177,14 @@ migrate_from_waybar/
 niri event-stream ──> Niri.qml ──> Bar.qml ──> Workspaces / ActiveWindow
 /proc/stat ────────> Stats.qml ──> Bar.qml ──> Cpu
 /proc/meminfo ─────> Stats.qml ──> Bar.qml ──> Memory
+/proc/stat + /proc/meminfo + /proc/<pid>/stat ──> Tasks.qml ──> TaskManagerPanel.qml
 Pipewire ──────────> Audio.qml（默认输出/麦克风/应用流）
 NetworkManager ────> Network.qml <── /proc/net/dev（5s 一次带宽）
 BlueZ ─────────────> Bluetooth.qml
 UPower ────────────> Battery.qml
+/sys/firmware/acpi/platform_profile ──> Battery.qml（电源模式图标）
+Battery.qml ──> niri focus-window / rog-control-center（左键）
+Battery.qml ──> asusctl profile next（右键）
 StatusNotifier ────> Tray.qml
 Away.qml ──> StayAwake.qml（全局状态）──> IdleInhibitor（每块屏幕的 1x1 overlay surface）
 D-Bus Notifications ──> Notifications.qml ──┬─> NotificationPopup.qml（toast）
@@ -179,7 +197,7 @@ D-Bus Notifications ──> Notifications.qml ──┬─> NotificationPopup.qm
 
 - 音频混音器只列出正在播放的应用流（`Stream/Output/Audio`），不显示录音流；麦克风控制针对默认输入设备（`Pipewire.defaultAudioSource`）。切换输出/输入设备通过 `preferredDefaultAudioSink` / `preferredDefaultAudioSource` 完成，交给 WirePlumber 持久化。
 - 应用流按 PipeWire 节点 id 排序，避免媒体标题变化时列表重新排序；如果同一应用开了多个播放流，会显示为多行。
-- 网络/蓝牙/音频/通知中心/时钟月历弹层用独立的 layer-shell `PanelWindow` 绘制在顶栏下方。顶栏本身是 layer-shell surface，Qt 无法在它上面挂载带 grab 的 `xdg_popup`；独立覆盖层也能让 Wi-Fi 密码框正常取得键盘焦点。弹层打开时会占据屏幕下方区域的输入，点击弹层外或按 `Esc` 关闭。这些弹层使用 `exclusiveZone: -1`，这样 `margins.top` 相对屏幕边缘而不是顶栏预留的区域，否则会多出 `44px` 的空隙。
+- 网络/蓝牙/音频/通知中心/时钟月历/任务管理器弹层用独立的 layer-shell `PanelWindow` 绘制在顶栏下方。顶栏本身是 layer-shell surface，Qt 无法在它上面挂载带 grab 的 `xdg_popup`；独立覆盖层也能让 Wi-Fi 密码框正常取得键盘焦点。弹层打开时会占据屏幕下方区域的输入，点击弹层外或按 `Esc` 关闭。这些弹层使用 `exclusiveZone: -1`，这样 `margins.top` 相对屏幕边缘而不是顶栏预留的区域，否则会多出 `44px` 的空隙。
 - `NotificationServer` 只能注册一次 `org.freedesktop.Notifications`。mako/dunst 必须先停掉，否则新通知会继续进入旧的守护进程；niri 配置已注释掉 mako，并 mask 了 `mako.service` 以防 D-Bus 激活抢名字。
 - 通知历史保存在内存里，`qs` 完全退出后清空；配置重载时服务端会重新发出上一代通知，代码用 `lastGeneration` 忽略它们，避免重复弹 toast。免打扰状态同样不持久化。
 - toast 队列最多 3 条，避免批量通知遮住屏幕；历史最多保留 100 条，超出时自动关闭最旧的。
@@ -192,4 +210,8 @@ D-Bus Notifications ──> Notifications.qml ──┬─> NotificationPopup.qm
 - 时钟月历不再使用 Waybar 的 GTK tooltip 或 Quickshell 的 `PopupWindow`，而是和其他弹层一样用 `PanelWindow`；今天是主题色圆底，而不是 Waybar 的下划线。
 - 月历只显示当前月份的日期，不显示相邻月份，也不支持点击日期新建日程。
 - 网络带宽每 5 秒采样一次，与配置里的 `interval: 5` 一致；刚启动或刚重载后的第一次采样显示 `0.0b/s`。
+- 任务管理器只在面板打开时启动 2 秒采样；顶栏的 CPU/内存仍分别沿用 `Stats.qml` 的 10 秒/30 秒间隔。第一次采样只建立 CPU jiffies 基线，面板会在约 250ms 后补一次采样，所以进程 CPU 百分比会比进程列表晚一点出现。
+- 进程 CPU 以两次 `/proc/stat` 总 jiffies 的差值为分母，再按核心数换算成 htop 风格的单核百分比；进程 RSS 来自 `/proc/<pid>/stat` 的页数，共享内存会被重复计算，所以进程内存之和可能大于系统已用内存。
+- `End` 只发送 SIGTERM，权限不足或进程已退出时不会在面板里显示错误；需要 SIGKILL 时仍需使用终端。PID 1 的结束按钮被禁用。
+- 电池模块的电源模式图标依赖 ASUS 的 `/sys/firmware/acpi/platform_profile`；文件不存在时左侧图标留空，电量显示不受影响。右键切换依赖 `asusd`/`asusctl`，左键打开依赖 `rog-control-center`，这些动作在非 ROG 机器上不会生效。
 - “离开中”状态用 `PersistentProperties` 跨配置热重载保留；`qs` 完全重启或重新登录后会回到关闭状态。`IdleInhibitor` 依赖合成器的 idle-inhibit 支持（niri 支持）；它只阻止空闲导致的关屏/锁屏，不会阻止显式挂起或合盖休眠。inhibitor 挂在一个 1x1 透明 overlay surface 上，而不是顶栏上，所以即使全屏窗口遮住了顶栏也仍然有效。

@@ -88,10 +88,12 @@ PanelWindow {
       Bluetooth { screenName: bar.screen.name }
 
       Cpu {
+        screenName: bar.screen.name
         usage: Stats.cpuUsage
       }
 
       Memory {
+        screenName: bar.screen.name
         percentage: Stats.memoryPercentage
       }
 
@@ -100,6 +102,10 @@ PanelWindow {
       Away { screenName: bar.screen.name }
       Tray {}
     }
+  }
+
+  TaskManagerPanel {
+    screenName: bar.screen.name
   }
 }
 

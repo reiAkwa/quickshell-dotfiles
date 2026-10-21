@@ -3,9 +3,10 @@
 # the same directory are no longer registered implicitly.
 #
 # The singletons are listed so that static tooling (qmllint, qmlls) resolves
-# `Niri.` / `Stats.` as singleton instances instead of reporting every member
-# access as a missing property.
+# `Niri.` / `Stats.` / `Tasks.` as singleton instances instead of reporting every
+# member access as a missing property.
 singleton Niri 1.0 Niri.qml
 singleton Stats 1.0 Stats.qml
+singleton Tasks 1.0 Tasks.qml
 Bar 1.0 Bar.qml
 NotificationPopup 1.0 NotificationPopup.qml
