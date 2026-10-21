@@ -15,4 +15,6 @@ Scope {
 
     NotificationPopup {}
   }
+
+  Spotlight {}
 }

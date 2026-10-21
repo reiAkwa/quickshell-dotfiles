@@ -10,3 +10,4 @@ singleton Stats 1.0 Stats.qml
 singleton Tasks 1.0 Tasks.qml
 Bar 1.0 Bar.qml
 NotificationPopup 1.0 NotificationPopup.qml
+Spotlight 1.0 Spotlight.qml

@@ -1,23 +1,23 @@
-# migrate_from_waybar
+# niri
 
-用 Quickshell 0.3.2 复刻 `~/.config/waybar/{config.jsonc,style.css}` 的顶部栏。在原配置基础上，网络模块增加了可交互面板，新增了蓝牙连接按钮，把 `pulseaudio` 模块升级成支持应用音量与麦克风控制的混音器，并用 Quickshell 自己的 `NotificationServer` 取代 mako，提供右上角通知弹窗和通知中心，免打扰也并入了铃铛模块；铃铛右侧新增了保持屏幕常亮的“离开中”开关。电池模块与 ROG Control Center 联动：左键唤起控制中心，右键切换电源模式，并实时显示 asusd 当前的 Quiet/Balanced/Performance 模式。CPU 与内存模块不再调用外部 htop，两个图标都打开同一个 Quickshell 任务管理器面板。
+用 Quickshell 0.3.2 复刻 `~/.config/waybar/{config.jsonc,style.css}` 的顶部栏。在原配置基础上，网络模块增加了可交互面板，新增了蓝牙连接按钮，把 `pulseaudio` 模块升级成支持应用音量与麦克风控制的混音器，并用 Quickshell 自己的 `NotificationServer` 取代 mako，提供右上角通知弹窗和通知中心，免打扰也并入了铃铛模块；铃铛右侧新增了保持屏幕常亮的“离开中”开关。电池模块与 ROG Control Center 联动：左键唤起控制中心，右键切换电源模式，并实时显示 asusd 当前的 Quiet/Balanced/Performance 模式。CPU 与内存模块不再调用外部 htop，两个图标都打开同一个 Quickshell 任务管理器面板。另有一个 `Alt+Space` 唤出的 Spotlight 应用启动器。
 
 ## 运行
 
 ```sh
-qs -c migrate_from_waybar
+qs -c niri
 ```
 
 或直接指定路径：
 
 ```sh
-qs -p ~/.config/quickshell/migrate_from_waybar
+qs -p ~/.config/quickshell/niri
 ```
 
 后台运行：
 
 ```sh
-qs -d -c migrate_from_waybar
+qs -d -c niri
 ```
 
 如果要在 niri 登录时替换 Waybar，把 `~/.config/niri/config.kdl` 里的
@@ -29,7 +29,7 @@ spawn-at-startup "waybar"
 改成
 
 ```kdl
-spawn-at-startup "qs" "-c" "migrate_from_waybar"
+spawn-at-startup "qs" "-c" "niri"
 ```
 
 不要同时启动两者，否则两个顶部栏会重叠。
@@ -44,10 +44,11 @@ spawn-at-startup "qs" "-c" "migrate_from_waybar"
 ## 项目结构
 
 ```text
-migrate_from_waybar/
-├── shell.qml                  # 入口：为每块屏幕创建 Bar 和通知弹窗层
+niri/
+├── shell.qml                  # 入口：为每块屏幕创建 Bar 和通知弹窗层，并创建全局 Spotlight
 ├── Bar.qml                    # PanelWindow、背景/底边、左中右三段布局
 ├── NotificationPopup.qml      # 右上角 toast 层（每屏一个，layer-shell overlay）
+├── Spotlight.qml              # Alt+Space 应用启动器（模糊搜索 + 启动频率排序）
 ├── Niri.qml                   # Singleton：订阅 niri JSON event-stream
 ├── Stats.qml                  # Singleton：/proc/stat 与 /proc/meminfo（顶栏 10s/30s）
 ├── Tasks.qml                  # Singleton：任务管理器 /proc 采样、进程排序与结束进程
@@ -155,6 +156,14 @@ migrate_from_waybar/
   - 状态在 `StayAwake` 单例里共享，多屏时每块屏幕都会各自创建一个 inhibitor surface
   - 开关使用 `PersistentProperties` 保存，配置热重载（包括修改 `Away.qml`/`Bar.qml`）后仍保持开启，不会因为编辑 QML 而悄悄失效
 - 电池模块没有自定义 tooltip、弹出面板或媒体控制；只有上述点击/右键动作和电源模式图标联动。CPU/内存模块共用任务管理器面板，不再需要额外的 htop 窗口。
+- Spotlight（`Alt+Space`，niri bind 执行 `qs -c niri ipc call spotlight toggle`）：
+  - 屏幕中央偏上的浮层，带半透明遮罩；打开时用 `WlrKeyboardFocus.Exclusive` 独占键盘，`Esc`、再次按 `Alt+Space` 或点击遮罩关闭
+  - 输入即时过滤 `DesktopEntries` 里的应用，匹配名称、GenericName、Keywords、Categories、Comment 和 desktop id；支持子序列模糊匹配，空格分隔多个关键词
+  - `↑`/`↓`、`PageUp`/`PageDown`、`Ctrl+N`/`Ctrl+P`、`Tab`/`Shift+Tab` 移动选中项，`Enter` 启动；鼠标点击条目也可启动
+  - 空查询按启动次数排序；启动次数保存在 `Quickshell.statePath("spotlight-usage.json")`，常用的应用会自动排到前面
+  - 启动走 `DesktopEntry.execute()`；图标用 `Quickshell.iconPath` 解析，绝对路径图标按 `file://` 处理
+  - 多屏时在 niri 焦点窗口所在的输出打开；没有焦点窗口时回退到第一块屏幕
+  - 原来的 `Mod+Space` 仍然保留为 rofi 的启动入口，两者互不影响
 
 ## 视觉复刻的关键点
 
@@ -186,6 +195,7 @@ UPower ────────────> Battery.qml
 Battery.qml ──> niri focus-window / rog-control-center（左键）
 Battery.qml ──> asusctl profile next（右键）
 StatusNotifier ────> Tray.qml
+DesktopEntries ────> Spotlight.qml（模糊匹配 + 启动频率）
 Away.qml ──> StayAwake.qml（全局状态）──> IdleInhibitor（每块屏幕的 1x1 overlay surface）
 D-Bus Notifications ──> Notifications.qml ──┬─> NotificationPopup.qml（toast）
                                              └─> NotificationCenter.qml（历史）
@@ -215,3 +225,7 @@ D-Bus Notifications ──> Notifications.qml ──┬─> NotificationPopup.qm
 - `End` 只发送 SIGTERM，权限不足或进程已退出时不会在面板里显示错误；需要 SIGKILL 时仍需使用终端。PID 1 的结束按钮被禁用。
 - 电池模块的电源模式图标依赖 ASUS 的 `/sys/firmware/acpi/platform_profile`；文件不存在时左侧图标留空，电量显示不受影响。右键切换依赖 `asusd`/`asusctl`，左键打开依赖 `rog-control-center`，这些动作在非 ROG 机器上不会生效。
 - “离开中”状态用 `PersistentProperties` 跨配置热重载保留；`qs` 完全重启或重新登录后会回到关闭状态。`IdleInhibitor` 依赖合成器的 idle-inhibit 支持（niri 支持）；它只阻止空闲导致的关屏/锁屏，不会阻止显式挂起或合盖休眠。inhibitor 挂在一个 1x1 透明 overlay surface 上，而不是顶栏上，所以即使全屏窗口遮住了顶栏也仍然有效。
+- Spotlight 只搜索 `DesktopEntries` 里的 `.desktop` 应用，不搜索文件、窗口，也不执行 shell 命令或计算表达式；`NoDisplay=true` 的辅助入口（URL handler、portal 等）会被过滤。查询只做大小写/重音归一化和子序列匹配，没有拼音或拼写纠错。
+- Spotlight 的启动次数写在 `~/.local/state/quickshell/by-shell/<shell-id>/spotlight-usage.json`，shell id 由配置路径决定；移动或改名配置目录后历史会丢失，删掉该文件即可重置排序。
+- `Alt+Space` 由 niri 的 bind 触发（`spawn "qs" "-c" "niri" "ipc" "call" "spotlight" "toggle"`）。Quickshell 没运行时按快捷键不会有反应；`qs ipc` 需要通过 `-c niri` 选择这个配置实例。
+- Spotlight 打开时会占据整个屏幕的输入层，打开期间其他应用的鼠标点击不会穿透；关闭后 niri 会把键盘焦点还给原来的窗口。
