@@ -30,7 +30,6 @@ Module {
 
   onClicked: {
     StayAwake.active = !StayAwake.active;
-    console.log("[away] active =", StayAwake.active);
   }
 
   // A top-layer bar is covered by fullscreen windows in niri, and niri only
