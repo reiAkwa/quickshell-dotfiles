@@ -11,3 +11,4 @@ singleton Tasks 1.0 Tasks.qml
 Bar 1.0 Bar.qml
 NotificationPopup 1.0 NotificationPopup.qml
 Spotlight 1.0 Spotlight.qml
+Lockscreen 1.0 Lockscreen.qml

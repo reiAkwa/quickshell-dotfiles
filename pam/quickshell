@@ -1,0 +1,7 @@
+# Password-only PAM stack for the Quickshell lock screen.
+#
+# Kept separate from /etc/pam.d/login and /etc/pam.d/swaylock so changing the
+# desktop login stack does not silently change lock-screen behaviour. Only the
+# `auth` type is used by Quickshell.Services.Pam.
+auth required pam_faildelay.so delay=2000000
+auth required pam_unix.so

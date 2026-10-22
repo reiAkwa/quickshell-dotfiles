@@ -1,6 +1,6 @@
 # niri
 
-用 Quickshell 0.3.2 复刻 `~/.config/waybar/{config.jsonc,style.css}` 的顶部栏。在原配置基础上，网络模块增加了可交互面板，新增了蓝牙连接按钮，把 `pulseaudio` 模块升级成支持应用音量与麦克风控制的混音器，并用 Quickshell 自己的 `NotificationServer` 取代 mako，提供右上角通知弹窗和通知中心，免打扰也并入了铃铛模块；铃铛右侧新增了保持屏幕常亮的“离开中”开关。电池模块与 ROG Control Center 联动：左键唤起控制中心，右键切换电源模式，并实时显示 asusd 当前的 Quiet/Balanced/Performance 模式。CPU 与内存模块不再调用外部 htop，两个图标都打开同一个 Quickshell 任务管理器面板。另有一个 `Mod+Space` / `Alt+Space` 唤出的 Spotlight 启动器，支持应用搜索、`!` 执行命令和 `=` 算数。
+用 Quickshell 0.3.2 复刻 `~/.config/waybar/{config.jsonc,style.css}` 的顶部栏。在原配置基础上，网络模块增加了可交互面板，新增了蓝牙连接按钮，把 `pulseaudio` 模块升级成支持应用音量与麦克风控制的混音器，并用 Quickshell 自己的 `NotificationServer` 取代 mako，提供右上角通知弹窗和通知中心，免打扰也并入了铃铛模块；铃铛右侧新增了保持屏幕常亮的“离开中”开关。电池模块与 ROG Control Center 联动：左键唤起控制中心，右键切换电源模式，并实时显示 asusd 当前的 Quiet/Balanced/Performance 模式。CPU 与内存模块不再调用外部 htop，两个图标都打开同一个 Quickshell 任务管理器面板。另有一个 `Mod+Space` / `Alt+Space` 唤出的 Spotlight 启动器，支持应用搜索、`!` 执行命令和 `=` 算数。锁屏用 `WlSessionLock` + `Quickshell.Services.Pam` 实现，替代 swaylock：显示自定义壁纸，中央密码框，PAM 密码解锁。
 
 ## 运行
 
@@ -41,14 +41,20 @@ spawn-at-startup "qs" "-c" "niri"
 
 需要恢复 mako 时执行 `systemctl --user unmask mako.service` 并取消 niri 配置里的注释。
 
+锁屏入口也已经接到 `~/.config/niri/config.kdl`：`Super+Alt+L`、swayidle 的 5 分钟超时和 `before-sleep` 都执行 `~/.config/quickshell/niri/lock.sh`。
+
 ## 项目结构
 
 ```text
 niri/
-├── shell.qml                  # 入口：为每块屏幕创建 Bar 和通知弹窗层，并创建全局 Spotlight
+├── shell.qml                  # 入口：为每块屏幕创建 Bar 和通知弹窗层，并创建全局 Spotlight 与锁屏
 ├── Bar.qml                    # PanelWindow、背景/底边、左中右三段布局
 ├── NotificationPopup.qml      # 右上角 toast 层（每屏一个，layer-shell overlay）
 ├── Spotlight.qml              # Mod+Space/Alt+Space 启动器（应用搜索 + ! 命令 + = 算数）
+├── Lockscreen.qml             # 锁屏：WlSessionLock、每屏壁纸、居中密码框、PAM 认证
+├── lock.sh                    # 锁屏入口：优先走 Quickshell IPC，失败回退 swaylock
+├── pam/
+│   └── quickshell             # 锁屏专用 PAM auth 配置（pam_faildelay + pam_unix）
 ├── Niri.qml                   # Singleton：订阅 niri JSON event-stream
 ├── Stats.qml                  # Singleton：/proc/stat 与 /proc/meminfo（顶栏 10s/30s）
 ├── Tasks.qml                  # Singleton：任务管理器 /proc 采样、进程排序与结束进程
@@ -168,6 +174,14 @@ niri/
   - 空查询时脚注会提示 `! command` 和 `= calculator`；命令/算数模式也会显示对应的操作提示
   - 多屏时在 niri 焦点窗口所在的输出打开；没有焦点窗口时回退到第一块屏幕
   - `Mod+Space` 已从 rofi drun 迁移到 Spotlight；`Mod+V` 的剪贴板历史仍然使用 `cliphist | rofi`
+- 锁屏（`Super+Alt+L`，niri bind 执行 `lock.sh`）：
+  - 用 `WlSessionLock` 实现 `ext-session-lock-v1`，每块屏幕一个 lock surface；背景图用 `Image.PreserveAspectCrop` 铺满，和 swaybg 的 `-m fill` 一致
+  - 壁纸默认是 `~/wallpapers/1-1.jpg`；可以在启动 Quickshell 前用 `QS_LOCK_WALLPAPER` 环境变量覆盖，或直接改 `Lockscreen.qml` 里的 `wallpaper`
+  - 密码框居中，按 `Enter` 提交；认证期间输入框只读并显示“验证中…”，失败后清空输入并在下方显示错误
+  - 认证走 `pam/quickshell`（`pam_faildelay.so delay=2000000` + `pam_unix.so`），只做密码认证，不改系统 `/etc/pam.d/login` 或 swaylock 的配置
+  - `swayidle` 的 5 分钟超时和 `before-sleep` 都调用 `lock.sh`；脚本通过 `qs -c niri ipc call lock lock` 加锁，并等待 `isSecure` 为 true（最多约 2 秒）再返回，避免睡眠前锁屏还没盖住屏幕
+  - Quickshell 没运行或旧版本没有 `lock` IPC 时，`lock.sh` 回退到 `swaylock -f`
+  - IPC：`qs -c niri ipc call lock lock|isLocked|isSecure`
 
 ## 视觉复刻的关键点
 
@@ -205,6 +219,9 @@ Spotlight.qml ─────> Quickshell.clipboardText（= 结果复制）
 Away.qml ──> StayAwake.qml（全局状态）──> IdleInhibitor（每块屏幕的 1x1 overlay surface）
 D-Bus Notifications ──> Notifications.qml ──┬─> NotificationPopup.qml（toast）
                                              └─> NotificationCenter.qml（历史）
+Quickshell.Wayland.WlSessionLock ──> Lockscreen.qml（每屏壁纸 + 居中密码框）
+Quickshell.Services.Pam ──> pam/quickshell ──> pam_unix（密码认证）
+lock.sh ──> qs -c niri ipc call lock lock ──> Lockscreen.qml（等待 isSecure）
 ```
 
 `Niri.qml` 直接监听 `niri msg --json event-stream`。该流启动时会先发送 `WorkspacesChanged` 和 `WindowsChanged`，因此不需要额外轮询 niri。
@@ -238,3 +255,10 @@ D-Bus Notifications ──> Notifications.qml ──┬─> NotificationPopup.qm
 - Spotlight 的启动次数写在 `~/.local/state/quickshell/by-shell/<shell-id>/spotlight-usage.json`，shell id 由配置路径决定；移动或改名配置目录后历史会丢失，删掉该文件即可重置排序。
 - `Mod+Space` / `Alt+Space` 由 niri 的 bind 触发（两者都是 `spawn "qs" "-c" "niri" "ipc" "call" "spotlight" "toggle"`）。Quickshell 没运行时按快捷键不会有反应；`qs ipc` 需要通过 `-c niri` 选择这个配置实例。
 - Spotlight 打开时会占据整个屏幕的输入层，打开期间其他应用的鼠标点击不会穿透；关闭后 niri 会把键盘焦点还给原来的窗口。
+- 锁屏目前只有壁纸、密码框和错误提示，没有时钟、媒体控制、电量、用户切换或指纹；PAM 配置只跑 `pam_unix`。要加入指纹，在 `pam/quickshell` 的 `auth required pam_unix.so` 前面加一行 `auth sufficient pam_fprintd.so`，并确认 fprintd 已登记指纹。
+- 锁屏和顶栏在同一个 Quickshell 进程里，`lock` 只是设置 `WlSessionLock.locked`，不会重启或退出 `qs`。因此锁屏期间不要 `qs kill`、重启 Quickshell 或结束它的进程：按 ext-session-lock-v1 的约定，锁客户端消失后合成器会继续保持锁定（通常显示纯色），会话会变得不可操作。`qs` 的 QML 热重载对 `WlSessionLock` 是 Reloadable 的，但如果要修改锁屏代码，建议先解锁再改。
+- `lock.sh` 只在开始加锁时检查 Quickshell 是否可用；如果锁屏过程中 Quickshell 崩溃，脚本不会介入，因为此时已经没有可调用的 IPC。日常使用中不要把 `swaylock` 卸载掉，它是 Quickshell 不在时的兜底。
+- 锁屏壁纸只支持本地路径（`Image` 直接读取），路径由 `QS_LOCK_WALLPAPER` 或 `Lockscreen.qml` 决定；不会自动跟随 `spawn-at-startup "swaybg"` 的壁纸变化。
+- 多屏时每块屏幕都会生成一个 lock surface，共享同一个 PAM 会话和错误状态；密码框在每块屏幕居中，但键盘焦点由合成器交给其中一块屏幕。当前只有 eDP-1，未在真实多屏上验证。
+- 密码错误会经过 `pam_faildelay` 的 2 秒延迟再返回，避免快速暴力尝试；这 2 秒内输入框保持只读。
+- 锁屏只暴露 `lock` / `isLocked` / `isSecure` 三个 IPC，不提供 `unlock`：解锁必须经过 PAM 密码。这样同用户进程不能通过 IPC 直接把锁屏关掉。

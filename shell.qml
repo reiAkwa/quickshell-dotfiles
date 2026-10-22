@@ -17,4 +17,5 @@ Scope {
   }
 
   Spotlight {}
+  Lockscreen {}
 }
