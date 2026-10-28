@@ -36,6 +36,23 @@ Item {
     height: track.height
     radius: track.radius
     color: root.activeColor
+
+    // Dragging must stay 1:1 with the pointer, so the fill only eases for
+    // wheel and API volume changes.
+    Behavior on width {
+      enabled: !area.pressed
+      NumberAnimation {
+        duration: Theme.motionFast
+        easing.type: Theme.easeStandard
+      }
+    }
+
+    Behavior on color {
+      ColorAnimation {
+        duration: Theme.motionFast
+        easing.type: Theme.easeStandard
+      }
+    }
   }
 
   Rectangle {
@@ -50,6 +67,28 @@ Item {
     color: root.activeColor
     border.width: area.containsMouse || area.pressed ? 2 : 0
     border.color: Theme.background
+
+    Behavior on x {
+      enabled: !area.pressed
+      NumberAnimation {
+        duration: Theme.motionFast
+        easing.type: Theme.easeStandard
+      }
+    }
+
+    Behavior on color {
+      ColorAnimation {
+        duration: Theme.motionFast
+        easing.type: Theme.easeStandard
+      }
+    }
+
+    Behavior on border.width {
+      NumberAnimation {
+        duration: Theme.motionFast
+        easing.type: Theme.easeStandard
+      }
+    }
   }
 
   MouseArea {

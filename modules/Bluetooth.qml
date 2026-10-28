@@ -252,7 +252,14 @@ Module {
     id: panel
 
     screen: root.targetScreen
-    visible: root.panelOpen
+
+    // surfaceShown outlives panelOpen for the exit transition, and cardShown
+    // starts one frame after the surface is mapped so the entrance is never
+    // consumed while the layer surface is still unmapped.
+    property bool surfaceShown: false
+    property bool cardShown: false
+
+    visible: surfaceShown
     color: "transparent"
     focusable: true
     exclusiveZone: -1
@@ -271,8 +278,39 @@ Module {
     }
     margins.top: Theme.barHeight
 
+    Connections {
+      target: root
+      function onPanelOpenChanged() {
+        if (root.panelOpen) {
+          closeTimer.stop();
+          panel.surfaceShown = true;
+          panel.cardShown = false;
+          enterTimer.restart();
+        } else {
+          enterTimer.stop();
+          panel.cardShown = false;
+          closeTimer.restart();
+        }
+      }
+    }
+
+    Timer {
+      id: enterTimer
+      interval: 32
+      onTriggered: panel.cardShown = true
+    }
+
+    // Keep the surface mapped slightly past the exit curve so the last faded
+    // frame is presented instead of being torn down mid-animation.
+    Timer {
+      id: closeTimer
+      interval: Theme.motionExit + 20
+      onTriggered: panel.surfaceShown = false
+    }
+
     MouseArea {
       anchors.fill: parent
+      enabled: root.panelOpen
       acceptedButtons: Qt.LeftButton | Qt.RightButton
       onClicked: Popout.close(root.popupKey)
       onWheel: event => event.accepted = true
@@ -282,11 +320,42 @@ Module {
       width: 340
       height: panelContent.implicitHeight + 24
       x: Math.max(8, Math.min(root.anchorRightCache - width, parent.width - width - 8))
-      y: 4
+      y: panel.cardShown ? 4 : -6
       radius: Theme.moduleRadius
       color: Theme.background
       border.width: 1
       border.color: Theme.accent
+      opacity: panel.cardShown ? 1 : 0
+      scale: panel.cardShown ? 1 : 0.97
+      transformOrigin: Item.Top
+
+      Behavior on y {
+        NumberAnimation {
+          duration: panel.cardShown ? Theme.motionBase : Theme.motionExit
+          easing.type: panel.cardShown ? Theme.easeEnter : Theme.easeExit
+        }
+      }
+
+      Behavior on opacity {
+        NumberAnimation {
+          duration: panel.cardShown ? Theme.motionBase : Theme.motionExit
+          easing.type: panel.cardShown ? Theme.easeStandard : Theme.easeExit
+        }
+      }
+
+      Behavior on scale {
+        NumberAnimation {
+          duration: panel.cardShown ? Theme.motionBase : Theme.motionExit
+          easing.type: panel.cardShown ? Theme.easeEnter : Theme.easeExit
+        }
+      }
+
+      Behavior on height {
+        NumberAnimation {
+          duration: Theme.motionBase
+          easing.type: Theme.easeStandard
+        }
+      }
 
       MouseArea {
         anchors.fill: parent
@@ -347,6 +416,13 @@ Module {
           radius: 6
           color: adapterToggleMouse.containsMouse && root.adapter ? Theme.rowHover : "transparent"
 
+          Behavior on color {
+            ColorAnimation {
+              duration: Theme.motionFast
+              easing.type: Theme.easeStandard
+            }
+          }
+
           RowLayout {
             anchors.fill: parent
             anchors {
@@ -376,6 +452,13 @@ Module {
               radius: 9
               color: root.powered ? Theme.accent : Theme.inactive
 
+              Behavior on color {
+                ColorAnimation {
+                  duration: Theme.motionFast
+                  easing.type: Theme.easeStandard
+                }
+              }
+
               Rectangle {
                 width: 14
                 height: 14
@@ -385,7 +468,10 @@ Module {
                 color: Theme.accentText
 
                 Behavior on x {
-                  NumberAnimation { duration: 100 }
+                  NumberAnimation {
+                    duration: Theme.motionBase
+                    easing.type: Theme.easeStandard
+                  }
                 }
               }
             }

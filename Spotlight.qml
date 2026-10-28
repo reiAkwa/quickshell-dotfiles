@@ -82,8 +82,14 @@ PanelWindow {
     entry => !entry.noDisplay && entry.name.trim() !== ""
   )
 
+  // surfaceShown outlives opened for the exit transition, and cardShown
+  // starts one frame after the surface is mapped so the entrance is never
+  // consumed while the layer surface is still unmapped.
+  property bool surfaceShown: false
+  property bool cardShown: false
+
   screen: root.targetScreen
-  visible: root.opened
+  visible: surfaceShown
   color: "transparent"
   focusable: true
   exclusiveZone: -1
@@ -487,7 +493,35 @@ PanelWindow {
     root.opened = false;
     root.query = "";
     root.selectedIndex = 0;
-    root.results = [];
+    // Keep the results while the panel fades out; open() rebuilds them, and
+    // clearing now would collapse the card mid-transition.
+  }
+
+  onOpenedChanged: {
+    if (root.opened) {
+      closeTimer.stop();
+      root.surfaceShown = true;
+      root.cardShown = false;
+      enterTimer.restart();
+    } else {
+      enterTimer.stop();
+      root.cardShown = false;
+      closeTimer.restart();
+    }
+  }
+
+  Timer {
+    id: enterTimer
+    interval: 32
+    onTriggered: root.cardShown = true
+  }
+
+  // Keep the surface mapped slightly past the exit curve so the last faded
+  // frame is presented instead of being torn down mid-animation.
+  Timer {
+    id: closeTimer
+    interval: Theme.motionExit + 20
+    onTriggered: root.surfaceShown = false
   }
 
   function toggle() {
@@ -539,9 +573,18 @@ PanelWindow {
   Rectangle {
     anchors.fill: parent
     color: Qt.rgba(0, 0, 0, 0.26)
+    opacity: root.cardShown ? 1 : 0
+
+    Behavior on opacity {
+      NumberAnimation {
+        duration: root.cardShown ? Theme.motionBase : Theme.motionExit
+        easing.type: root.cardShown ? Theme.easeStandard : Theme.easeExit
+      }
+    }
 
     MouseArea {
       anchors.fill: parent
+      enabled: root.opened
       acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
       onClicked: root.close()
       onWheel: event => event.accepted = true
@@ -565,9 +608,37 @@ PanelWindow {
     color: Theme.background
     border.width: 1
     border.color: Theme.accent
+    opacity: root.cardShown ? 1 : 0
+    scale: root.cardShown ? 1 : 0.97
+
+    transform: Translate {
+      y: root.cardShown ? 0 : -10
+
+      Behavior on y {
+        NumberAnimation {
+          duration: root.cardShown ? Theme.motionBase : Theme.motionExit
+          easing.type: root.cardShown ? Theme.easeEnter : Theme.easeExit
+        }
+      }
+    }
+
+    Behavior on opacity {
+      NumberAnimation {
+        duration: root.cardShown ? Theme.motionBase : Theme.motionExit
+        easing.type: root.cardShown ? Theme.easeStandard : Theme.easeExit
+      }
+    }
+
+    Behavior on scale {
+      NumberAnimation {
+        duration: root.cardShown ? Theme.motionBase : Theme.motionExit
+        easing.type: root.cardShown ? Theme.easeEnter : Theme.easeExit
+      }
+    }
 
     MouseArea {
       anchors.fill: parent
+      enabled: root.opened
       acceptedButtons: Qt.LeftButton | Qt.RightButton
       onClicked: {}
       onWheel: event => event.accepted = true
@@ -728,6 +799,13 @@ PanelWindow {
               color: row.selected
                 ? Theme.accent
                 : (mouse.containsMouse ? Theme.rowHover : "transparent")
+
+              Behavior on color {
+                ColorAnimation {
+                  duration: Theme.motionFast
+                  easing.type: Theme.easeStandard
+                }
+              }
             }
 
             MouseArea {

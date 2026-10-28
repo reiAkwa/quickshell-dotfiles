@@ -55,6 +55,19 @@ Singleton {
   readonly property int fontSize: 14
   readonly property string fontFamily: "IosevkaTerm Nerd Font"
 
+  // Motion. Animations never use the default linear curve: color changes get
+  // a short decelerating fade, movement gets a fast-then-settle quintic curve,
+  // and exits leave faster than they arrived. Keeping durations here makes
+  // every surface (bar, popouts, overlays) feel like one system.
+  readonly property int motionFast: 120
+  readonly property int motionBase: 190
+  readonly property int motionSlow: 260
+  readonly property int motionExit: 140
+
+  readonly property int easeStandard: Easing.OutCubic
+  readonly property int easeEnter: Easing.OutQuint
+  readonly property int easeExit: Easing.InCubic
+
   // Waybar's window module: max-length 50, ellipsized at 367px.
   readonly property int windowTextMaxWidth: 367
 

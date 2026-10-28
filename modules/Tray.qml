@@ -29,7 +29,7 @@ Module {
   }
 
   implicitWidth: trayRow.width + Theme.modulePadding * 2
-  moduleColor: Theme.tray
+  moduleColor: containsMouse ? Qt.lighter(Theme.tray, 1.06) : Theme.tray
 
   Row {
     id: trayRow

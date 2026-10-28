@@ -20,6 +20,28 @@ Rectangle {
     ? Theme.inactive
     : (primary ? Theme.accent : (mouse.containsMouse ? Theme.surfaceHover : Theme.surface))
   opacity: available ? 1 : 0.65
+  scale: mouse.pressed && available ? 0.94 : 1
+
+  Behavior on color {
+    ColorAnimation {
+      duration: Theme.motionFast
+      easing.type: Theme.easeStandard
+    }
+  }
+
+  Behavior on opacity {
+    NumberAnimation {
+      duration: Theme.motionFast
+      easing.type: Theme.easeStandard
+    }
+  }
+
+  Behavior on scale {
+    NumberAnimation {
+      duration: Theme.motionFast
+      easing.type: Theme.easeStandard
+    }
+  }
 
   Text {
     id: label

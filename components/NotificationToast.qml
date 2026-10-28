@@ -31,20 +31,75 @@ Rectangle {
   readonly property string appIconSource: Notifications.displayIcon(notification)
 
   width: parent ? parent.width : 360
-  implicitHeight: layout.implicitHeight + 20
+  // The card collapses after it fades so the remaining toasts glide up
+  // instead of jumping when the model row disappears.
+  implicitHeight: closing ? 0 : layout.implicitHeight + 20
   radius: Theme.moduleRadius
   color: Theme.background
   border.width: 1
   border.color: urgencyColor
-  opacity: 0
+  clip: true
 
-  Behavior on opacity {
-    NumberAnimation {
-      duration: 120
+  property bool shown: false
+  property bool closing: false
+
+  opacity: shown && !closing ? 1 : 0
+  scale: shown && !closing ? 1 : 0.98
+  transformOrigin: Item.Top
+
+  transform: Translate {
+    y: root.shown && !root.closing ? 0 : -8
+
+    Behavior on y {
+      NumberAnimation {
+        duration: root.closing ? Theme.motionExit : Theme.motionBase
+        easing.type: root.closing ? Theme.easeExit : Theme.easeEnter
+      }
     }
   }
 
-  Component.onCompleted: opacity = 1
+  Behavior on opacity {
+    NumberAnimation {
+      duration: root.closing ? Theme.motionExit : Theme.motionBase
+      easing.type: root.closing ? Theme.easeExit : Theme.easeStandard
+    }
+  }
+
+  Behavior on scale {
+    NumberAnimation {
+      duration: root.closing ? Theme.motionExit : Theme.motionBase
+      easing.type: root.closing ? Theme.easeExit : Theme.easeEnter
+    }
+  }
+
+  Behavior on implicitHeight {
+    NumberAnimation {
+      duration: root.closing ? Theme.motionExit : Theme.motionBase
+      easing.type: root.closing ? Theme.easeExit : Theme.easeEnter
+    }
+  }
+
+  function beginClose() {
+    if (root.closing)
+      return;
+    root.closing = true;
+    closeTimer.restart();
+  }
+
+  Timer {
+    id: closeTimer
+    interval: Theme.motionExit + 16
+    onTriggered: root.closed()
+  }
+
+  // The toast surface is mapped together with the first card; delay the
+  // entrance one frame so the fade is not consumed while still unmapped.
+  Timer {
+    id: enterTimer
+    interval: 32
+    running: true
+    onTriggered: root.shown = true
+  }
 
   HoverHandler {
     id: hover
@@ -54,7 +109,7 @@ Rectangle {
     anchors.fill: parent
     onClicked: {
       Notifications.invokeDefault(root.notification);
-      root.closed();
+      root.beginClose();
     }
   }
 
@@ -123,12 +178,19 @@ Rectangle {
           font.pixelSize: 11
           textFormat: Text.PlainText
 
+          Behavior on color {
+            ColorAnimation {
+              duration: Theme.motionFast
+              easing.type: Theme.easeStandard
+            }
+          }
+
           MouseArea {
             id: closeMouse
             anchors.fill: parent
             anchors.margins: -6
             hoverEnabled: true
-            onClicked: root.closed()
+            onClicked: root.beginClose()
           }
         }
       }
@@ -185,7 +247,7 @@ Rectangle {
 
   Timer {
     interval: Notifications.timeoutMs(root.notification)
-    running: interval > 0 && !hover.hovered
-    onTriggered: root.closed()
+    running: interval > 0 && !hover.hovered && !root.closing
+    onTriggered: root.beginClose()
   }
 }

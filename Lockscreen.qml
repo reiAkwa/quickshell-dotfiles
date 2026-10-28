@@ -112,6 +112,33 @@ Scope {
         color: "#b31a222a"
         border.width: 1
         border.color: input.activeFocus ? Theme.accent : "#66ffffff"
+        opacity: 0
+        scale: 0.94
+
+        Behavior on opacity {
+          NumberAnimation {
+            duration: Theme.motionSlow
+            easing.type: Theme.easeStandard
+          }
+        }
+
+        Behavior on scale {
+          NumberAnimation {
+            duration: Theme.motionSlow
+            easing.type: Theme.easeEnter
+          }
+        }
+
+        // Start after the lock surface has been committed; animating at
+        // Component.onCompleted would finish while the surface is still bare.
+        Timer {
+          interval: 32
+          running: true
+          onTriggered: {
+            inputBox.opacity = 1;
+            inputBox.scale = 1;
+          }
+        }
 
         Text {
           anchors.centerIn: parent
@@ -185,7 +212,23 @@ Scope {
         height: 32
         radius: 16
         color: "#99000000"
-        visible: root.errorText.length > 0
+        opacity: root.errorText.length > 0 ? 1 : 0
+        scale: root.errorText.length > 0 ? 1 : 0.94
+        visible: opacity > 0
+
+        Behavior on opacity {
+          NumberAnimation {
+            duration: root.errorText.length > 0 ? Theme.motionBase : Theme.motionExit
+            easing.type: root.errorText.length > 0 ? Theme.easeStandard : Theme.easeExit
+          }
+        }
+
+        Behavior on scale {
+          NumberAnimation {
+            duration: root.errorText.length > 0 ? Theme.motionBase : Theme.motionExit
+            easing.type: root.errorText.length > 0 ? Theme.easeEnter : Theme.easeExit
+          }
+        }
 
         Text {
           id: errorLabel

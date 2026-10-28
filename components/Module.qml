@@ -19,6 +19,32 @@ Item {
   signal rightClicked
   signal scrolled(int delta)
 
+  // Hover, mute and press feedback is eased instead of snapping. The bar
+  // keeps its layout because only the module surface is scaled a touch while
+  // the pointer is held down.
+  scale: mouse.pressed ? 0.97 : 1
+
+  Behavior on scale {
+    NumberAnimation {
+      duration: Theme.motionFast
+      easing.type: Theme.easeStandard
+    }
+  }
+
+  Behavior on moduleColor {
+    ColorAnimation {
+      duration: Theme.motionFast
+      easing.type: Theme.easeStandard
+    }
+  }
+
+  Behavior on textColor {
+    ColorAnimation {
+      duration: Theme.motionFast
+      easing.type: Theme.easeStandard
+    }
+  }
+
   implicitWidth: contentRow.implicitWidth + Theme.modulePadding * 2
   implicitHeight: Theme.moduleHeight
 

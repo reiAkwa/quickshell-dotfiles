@@ -67,11 +67,18 @@ Row {
         anchors.fill: parent
         radius: Theme.moduleRadius
         color: button.modelData.isFocused
-          ? Theme.accent
-          : Theme.workspaceInactive
+          ? (area.containsMouse
+            ? Qt.lighter(Theme.accent, 1.08)
+            : Theme.accent)
+          : (area.containsMouse
+            ? Theme.rowHover
+            : Theme.workspaceInactive)
 
         Behavior on color {
-          ColorAnimation { duration: 120 }
+          ColorAnimation {
+            duration: Theme.motionFast
+            easing.type: Theme.easeStandard
+          }
         }
       }
 
@@ -87,12 +94,17 @@ Row {
         textFormat: Text.PlainText
 
         Behavior on color {
-          ColorAnimation { duration: 120 }
+          ColorAnimation {
+            duration: Theme.motionFast
+            easing.type: Theme.easeStandard
+          }
         }
       }
 
       MouseArea {
+        id: area
         anchors.fill: parent
+        hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: root.focusWorkspace(button.modelData.idx)
       }

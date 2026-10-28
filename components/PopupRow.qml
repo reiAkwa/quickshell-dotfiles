@@ -24,6 +24,13 @@ Item {
     anchors.fill: parent
     radius: 6
     color: mouse.containsMouse && root.interactive ? Theme.rowHover : "transparent"
+
+    Behavior on color {
+      ColorAnimation {
+        duration: Theme.motionFast
+        easing.type: Theme.easeStandard
+      }
+    }
   }
 
   MouseArea {

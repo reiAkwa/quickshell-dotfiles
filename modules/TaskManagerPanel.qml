@@ -28,8 +28,14 @@ PanelWindow {
     return null;
   }
 
+  // surfaceShown outlives panelOpen for the exit transition, and cardShown
+  // starts one frame after the surface is mapped so the entrance is never
+  // consumed while the layer surface is still unmapped.
+  property bool surfaceShown: false
+  property bool cardShown: false
+
   screen: root.targetScreen
-  visible: root.panelOpen
+  visible: surfaceShown
   color: "transparent"
   focusable: true
   exclusiveZone: -1
@@ -51,6 +57,30 @@ PanelWindow {
   onPanelOpenChanged: {
     Tasks.setPanelOpen(root.panelOpen);
     root.pendingKillPid = -1;
+    if (root.panelOpen) {
+      closeTimer.stop();
+      root.surfaceShown = true;
+      root.cardShown = false;
+      enterTimer.restart();
+    } else {
+      enterTimer.stop();
+      root.cardShown = false;
+      closeTimer.restart();
+    }
+  }
+
+  Timer {
+    id: enterTimer
+    interval: 32
+    onTriggered: root.cardShown = true
+  }
+
+  // Keep the surface mapped slightly past the exit curve so the last faded
+  // frame is presented instead of being torn down mid-animation.
+  Timer {
+    id: closeTimer
+    interval: Theme.motionExit + 20
+    onTriggered: root.surfaceShown = false
   }
 
   Component.onCompleted: Tasks.setPanelOpen(root.panelOpen)
@@ -66,6 +96,7 @@ PanelWindow {
   // layer-shell surface, so an xdg_popup cannot be attached to it.
   MouseArea {
     anchors.fill: parent
+    enabled: root.panelOpen
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     onClicked: Popout.close(root.popupKey)
     onWheel: event => event.accepted = true
@@ -75,15 +106,47 @@ PanelWindow {
     width: 460
     height: Math.min(560, parent.height - 8)
     x: Math.max(8, Math.min(Tasks.anchorRight - width, parent.width - width - 8))
-    y: 4
+    y: root.cardShown ? 4 : -6
     radius: Theme.moduleRadius
     color: Theme.background
     border.width: 1
     border.color: Theme.accent
     clip: true
+    opacity: root.cardShown ? 1 : 0
+    scale: root.cardShown ? 1 : 0.97
+    transformOrigin: Item.Top
+
+    Behavior on y {
+      NumberAnimation {
+        duration: root.cardShown ? Theme.motionBase : Theme.motionExit
+        easing.type: root.cardShown ? Theme.easeEnter : Theme.easeExit
+      }
+    }
+
+    Behavior on opacity {
+      NumberAnimation {
+        duration: root.cardShown ? Theme.motionBase : Theme.motionExit
+        easing.type: root.cardShown ? Theme.easeStandard : Theme.easeExit
+      }
+    }
+
+    Behavior on scale {
+      NumberAnimation {
+        duration: root.cardShown ? Theme.motionBase : Theme.motionExit
+        easing.type: root.cardShown ? Theme.easeEnter : Theme.easeExit
+      }
+    }
+
+    Behavior on height {
+      NumberAnimation {
+        duration: Theme.motionBase
+        easing.type: Theme.easeStandard
+      }
+    }
 
     MouseArea {
       anchors.fill: parent
+      enabled: root.panelOpen
       acceptedButtons: Qt.LeftButton | Qt.RightButton
       onClicked: {}
       onWheel: event => event.accepted = true
@@ -173,6 +236,13 @@ PanelWindow {
               height: parent.height
               radius: 3
               color: Theme.cpu
+
+              Behavior on width {
+                NumberAnimation {
+                  duration: Theme.motionSlow
+                  easing.type: Theme.easeStandard
+                }
+              }
             }
           }
 
@@ -226,6 +296,13 @@ PanelWindow {
               height: parent.height
               radius: 3
               color: Theme.memory
+
+              Behavior on width {
+                NumberAnimation {
+                  duration: Theme.motionSlow
+                  easing.type: Theme.easeStandard
+                }
+              }
             }
           }
 
@@ -371,6 +448,13 @@ PanelWindow {
             color: rowHover.hovered || root.pendingKillPid === processRow.pid
               ? Theme.rowHover
               : "transparent"
+
+            Behavior on color {
+              ColorAnimation {
+                duration: Theme.motionFast
+                easing.type: Theme.easeStandard
+              }
+            }
           }
 
           RowLayout {
