@@ -17,5 +17,6 @@ Scope {
   }
 
   Spotlight {}
+  Clipboard {}
   Lockscreen {}
 }

@@ -1,6 +1,6 @@
 # niri
 
-用 Quickshell 0.3.2 复刻 `~/.config/waybar/{config.jsonc,style.css}` 的顶部栏。在原配置基础上，网络模块增加了可交互面板，新增了蓝牙连接按钮，把 `pulseaudio` 模块升级成支持应用音量与麦克风控制的混音器，并用 Quickshell 自己的 `NotificationServer` 取代 mako，提供右上角通知弹窗和通知中心，免打扰也并入了铃铛模块；铃铛右侧新增了保持屏幕常亮的“离开中”开关。电池模块与 ROG Control Center 联动：左键唤起控制中心，右键切换电源模式，并实时显示 asusd 当前的 Quiet/Balanced/Performance 模式。CPU 与内存模块不再调用外部 htop，两个图标都打开同一个 Quickshell 任务管理器面板。另有一个 `Mod+Space` / `Alt+Space` 唤出的 Spotlight 启动器，支持应用搜索、`!` 执行命令和 `=` 算数。锁屏用 `WlSessionLock` + `Quickshell.Services.Pam` 实现，替代 swaylock：显示自定义壁纸，中央密码框，PAM 密码解锁。
+用 Quickshell 0.3.2 复刻 `~/.config/waybar/{config.jsonc,style.css}` 的顶部栏。在原配置基础上，网络模块增加了可交互面板，新增了蓝牙连接按钮，把 `pulseaudio` 模块升级成支持应用音量与麦克风控制的混音器，并用 Quickshell 自己的 `NotificationServer` 取代 mako，提供右上角通知弹窗和通知中心，免打扰也并入了铃铛模块；铃铛右侧新增了保持屏幕常亮的“离开中”开关。电池模块与 ROG Control Center 联动：左键唤起控制中心，右键切换电源模式，并实时显示 asusd 当前的 Quiet/Balanced/Performance 模式。CPU 与内存模块不再调用外部 htop，两个图标都打开同一个 Quickshell 任务管理器面板。另有一个 `Mod+Space` / `Alt+Space` 唤出的 Spotlight 启动器，支持应用搜索、`!` 执行命令和 `=` 算数；`Mod+V` 唤出的剪贴板历史也改为 Quickshell 面板，后端继续使用 cliphist。锁屏用 `WlSessionLock` + `Quickshell.Services.Pam` 实现，替代 swaylock：显示自定义壁纸，中央密码框，PAM 密码解锁。
 
 ## 运行
 
@@ -47,10 +47,11 @@ spawn-at-startup "qs" "-c" "niri"
 
 ```text
 niri/
-├── shell.qml                  # 入口：为每块屏幕创建 Bar 和通知弹窗层，并创建全局 Spotlight 与锁屏
+├── shell.qml                  # 入口：为每块屏幕创建 Bar 和通知弹窗层，并创建全局 Spotlight、剪贴板历史与锁屏
 ├── Bar.qml                    # PanelWindow、背景/底边、左中右三段布局
 ├── NotificationPopup.qml      # 右上角 toast 层（每屏一个，layer-shell overlay）
 ├── Spotlight.qml              # Mod+Space/Alt+Space 启动器（应用搜索 + ! 命令 + = 算数）
+├── Clipboard.qml              # Mod+V 剪贴板历史面板（cliphist 列表 + 搜索 + 文本/图片预览 + 删除）
 ├── Lockscreen.qml             # 锁屏：WlSessionLock、每屏壁纸、居中密码框、PAM 认证
 ├── lock.sh                    # 锁屏入口：优先走 Quickshell IPC，失败回退 swaylock
 ├── pam/
@@ -173,7 +174,14 @@ niri/
   - `=` 前缀进入算数模式：支持 `+ - * / % ^`、括号、正负号、小数和科学计数法，输入时实时显示结果；`Enter` 把结果复制到剪贴板并关闭
   - 空查询时脚注会提示 `! command` 和 `= calculator`；命令/算数模式也会显示对应的操作提示
   - 多屏时在 niri 焦点窗口所在的输出打开；没有焦点窗口时回退到第一块屏幕
-  - `Mod+Space` 已从 rofi drun 迁移到 Spotlight；`Mod+V` 的剪贴板历史仍然使用 `cliphist | rofi`
+  - `Mod+Space` 已从 rofi drun 迁移到 Spotlight；`Mod+V` 的剪贴板历史也已从 `cliphist | rofi` 迁移到 Quickshell 面板
+- 剪贴板历史（`Mod+V`，niri bind 执行 `qs -c niri ipc call clipboard toggle`）：
+  - 存储仍由 `wl-paste --watch cliphist store` 负责；面板只调用 `cliphist list` / `decode` / `delete`，不自己监听剪贴板
+  - 列表默认按 cliphist 的新旧顺序显示，输入即时过滤（`cliphist -preview-width 400 list` 返回的预览，空格分词）；`↑`/`↓`、`PageUp`/`PageDown`、`Ctrl+N`/`Ctrl+P`、`Tab`/`Shift+Tab` 移动选中项
+  - `Enter` 或左键复制并关闭：`cliphist decode <id> | wl-copy`，文本和图片都走同一条 wl-copy 管道
+  - 图片条目在行首显示缩略图，右侧预览按比例放大；文本条目右侧解码前 8 KiB 显示完整预览，未解码完时显示 `Loading preview…`
+  - `Ctrl+Delete` / `Shift+Delete` 删除选中条目，鼠标中键删除对应条目；`Esc`、再次按 `Mod+V` 或点击遮罩关闭
+  - 多屏时和 Spotlight 一样在 niri 焦点窗口所在的输出打开；没有焦点窗口时回退到第一块屏幕
 - 锁屏（`Super+Alt+L`，niri bind 执行 `lock.sh`）：
   - 用 `WlSessionLock` 实现 `ext-session-lock-v1`，每块屏幕一个 lock surface；背景图用 `Image.PreserveAspectCrop` 铺满，和 swaybg 的 `-m fill` 一致
   - 壁纸默认是 `~/wallpapers/1-1.jpg`；可以在启动 Quickshell 前用 `QS_LOCK_WALLPAPER` 环境变量覆盖，或直接改 `Lockscreen.qml` 里的 `wallpaper`
@@ -216,6 +224,8 @@ StatusNotifier ────> Tray.qml
 DesktopEntries ────> Spotlight.qml（应用搜索 + 启动频率）
 Spotlight.qml ─────> sh -c（! 命令）
 Spotlight.qml ─────> Quickshell.clipboardText（= 结果复制）
+cliphist ──────────> Clipboard.qml（list / decode / delete）
+Clipboard.qml ─────> wl-copy（文本/图片写回剪贴板）
 Away.qml ──> StayAwake.qml（全局状态）──> IdleInhibitor（每块屏幕的 1x1 overlay surface）
 D-Bus Notifications ──> Notifications.qml ──┬─> NotificationPopup.qml（toast）
                                              └─> NotificationCenter.qml（历史）
@@ -251,7 +261,12 @@ lock.sh ──> qs -c niri ipc call lock lock ──> Lockscreen.qml（等待 is
 - Spotlight 的默认模式只搜索 `DesktopEntries` 里的 `.desktop` 应用，不搜索文件或窗口；`NoDisplay=true` 的辅助入口（URL handler、portal 等）会被过滤。查询只做大小写/重音归一化和子序列匹配，没有拼音或拼写纠错。
 - `!` 命令模式通过 `sh -c` 直接执行，输入后 `Enter` 立即运行，没有确认步骤；因为没有挂终端，需要交互或 stdout 的命令（如 `htop`）看不到输出，也不提供命令历史。
 - `=` 算数模式只支持数字、`+ - * / % ^`、正负号和括号，不支持函数、常量或变量；除零和非法表达式会在结果行里提示，结果只复制到剪贴板，不写入历史。
-- `Mod+Space` 的 rofi drun 入口已替换为 Spotlight；`Mod+V` 的剪贴板历史仍然使用 `cliphist | rofi`。
+- `Mod+Space` 的 rofi drun 入口已替换为 Spotlight；`Mod+V` 的剪贴板历史也已从 `cliphist | rofi` 迁移到 Quickshell 面板。
+- 剪贴板面板依赖 cliphist 和 `wl-paste --watch cliphist store`；Quickshell 的 `clipboardText` 只支持文本，保留 cliphist 才能复制图片。完全退出 `qs` 后剪贴板历史仍在（在 `~/.cache/cliphist/db`），面板只是查看/选择界面。
+- 剪贴板搜索只覆盖 `cliphist list` 返回的预览（当前 `-preview-width 400`），不搜索长文本的剩余部分；右侧文本预览也只解码前 8 KiB。`cliphist` 会把非图片的二进制内容当作文本存储，这类条目可能显示乱码。
+- 图片缩略图解码到 `~/.cache/quickshell/by-shell/<shell-id>/clipboard-<id>.<ext>`；面板打开时会清理 7 天前的同类文件。预览只声明支持 png/jpeg/webp/gif/bmp/ico/tiff，其他图片格式会退化为 “Preview unavailable”。
+- 删除只移除 cliphist 里的条目，不会清空当前剪贴板；删除操作没有撤销。`Mod+V` 由 niri bind 触发，Quickshell 没运行时按快捷键不会有反应；`qs ipc` 需要通过 `-c niri` 选择这个配置实例。
+- 剪贴板面板和 Spotlight 一样在打开时占据整个屏幕的输入层；关闭后 niri 把键盘焦点还给原来的窗口。
 - Spotlight 的启动次数写在 `~/.local/state/quickshell/by-shell/<shell-id>/spotlight-usage.json`，shell id 由配置路径决定；移动或改名配置目录后历史会丢失，删掉该文件即可重置排序。
 - `Mod+Space` / `Alt+Space` 由 niri 的 bind 触发（两者都是 `spawn "qs" "-c" "niri" "ipc" "call" "spotlight" "toggle"`）。Quickshell 没运行时按快捷键不会有反应；`qs ipc` 需要通过 `-c niri` 选择这个配置实例。
 - Spotlight 打开时会占据整个屏幕的输入层，打开期间其他应用的鼠标点击不会穿透；关闭后 niri 会把键盘焦点还给原来的窗口。
