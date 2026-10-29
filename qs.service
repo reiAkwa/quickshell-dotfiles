@@ -1,0 +1,24 @@
+[Unit]
+Description=Quickshell for niri (bar, launcher, lock screen)
+Documentation=file:///home/reiakwa/.config/quickshell/niri/README.md
+PartOf=graphical-session.target
+After=graphical-session.target
+Requisite=graphical-session.target
+StartLimitIntervalSec=60
+StartLimitBurst=10
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/qs -c niri
+# If the previous process died while the session was locked, niri keeps the
+# session locked and only shows its red background. relock.sh asks the fresh
+# shell to take over the dead lock so the lock screen comes back.
+ExecStartPost=-/home/reiakwa/.config/quickshell/niri/relock.sh
+Restart=always
+RestartSec=2
+# An OOM kill of an app launched from the bar must not take the whole shell
+# (and its lock screen) down with it.
+OOMPolicy=continue
+
+[Install]
+WantedBy=niri.service

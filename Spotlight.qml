@@ -448,8 +448,10 @@ PanelWindow {
   function runCommand() {
     if (root.commandText === "")
       return;
-    // Same shell rofi/niri spawn-sh use, so pipes and redirections work.
-    Quickshell.execDetached(["sh", "-c", root.commandText]);
+    // Run through niri so the command gets its own app scope. Spawning it
+    // directly would put it in qs.service's cgroup, where an OOM kill could
+    // take the bar and lock screen down with it.
+    Quickshell.execDetached(["niri", "msg", "action", "spawn-sh", "--", root.commandText]);
     root.close();
   }
 
@@ -474,7 +476,17 @@ PanelWindow {
     if (!entry)
       return;
     root.remember(entry);
-    entry.execute();
+
+    // Same reason as runCommand(): niri creates a separate app scope for the
+    // launched application instead of keeping it in Quickshell's cgroup.
+    if (entry.workingDirectory !== "") {
+      entry.execute();
+    } else {
+      const command = ["niri", "msg", "action", "spawn", "--"];
+      for (let i = 0; i < entry.command.length; i++)
+        command.push(entry.command[i]);
+      Quickshell.execDetached(command);
+    }
     root.close();
   }
 

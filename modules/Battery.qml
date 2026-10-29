@@ -64,7 +64,9 @@ Module {
         return;
       }
     }
-    Quickshell.execDetached(["rog-control-center"]);
+    // Launch through niri so rogcc gets its own app scope instead of living in
+    // qs.service's cgroup (and surviving/restarting with the bar).
+    Quickshell.execDetached(["niri", "msg", "action", "spawn", "--", "rog-control-center"]);
   }
 
   FileView {

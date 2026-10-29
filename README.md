@@ -1,38 +1,32 @@
 # niri
 
-用 Quickshell 0.3.2 复刻 `~/.config/waybar/{config.jsonc,style.css}` 的顶部栏。在原配置基础上，网络模块增加了可交互面板，新增了蓝牙连接按钮，把 `pulseaudio` 模块升级成支持应用音量与麦克风控制的混音器，并用 Quickshell 自己的 `NotificationServer` 取代 mako，提供右上角通知弹窗和通知中心，免打扰也并入了铃铛模块；铃铛右侧新增了保持屏幕常亮的“离开中”开关。电池模块与 ROG Control Center 联动：左键唤起控制中心，右键切换电源模式，并实时显示 asusd 当前的 Quiet/Balanced/Performance 模式。CPU 与内存模块不再调用外部 htop，两个图标都打开同一个 Quickshell 任务管理器面板。另有一个 `Mod+Space` / `Alt+Space` 唤出的 Spotlight 启动器，支持应用搜索、`!` 执行命令和 `=` 算数；`Mod+V` 唤出的剪贴板历史也改为 Quickshell 面板，后端继续使用 cliphist。锁屏用 `WlSessionLock` + `Quickshell.Services.Pam` 实现，替代 swaylock：显示自定义壁纸，中央密码框，PAM 密码解锁。
+用 Quickshell 0.3.2 复刻 `~/.config/waybar/{config.jsonc,style.css}` 的顶部栏。在原配置基础上，网络模块增加了可交互面板，新增了蓝牙连接按钮，把 `pulseaudio` 模块升级成支持应用音量与麦克风控制的混音器，并用 Quickshell 自己的 `NotificationServer` 取代 mako，提供右上角通知弹窗和通知中心，免打扰也并入了铃铛模块；铃铛右侧新增了保持屏幕常亮的“离开中”开关。电池模块与 ROG Control Center 联动：左键唤起控制中心，右键切换电源模式，并实时显示 asusd 当前的 Quiet/Balanced/Performance 模式。CPU 与内存模块不再调用外部 htop，两个图标都打开同一个 Quickshell 任务管理器面板。另有一个 `Mod+Space` / `Alt+Space` 唤出的 Spotlight 启动器，支持应用搜索、`!` 执行命令和 `=` 算数；`Mod+V` 唤出的剪贴板历史也改为 Quickshell 面板，后端继续使用 cliphist。锁屏用 `WlSessionLock` + `Quickshell.Services.Pam` 实现，替代 swaylock：显示自定义壁纸，中央密码框，PAM 密码解锁。整个 shell 由 systemd 用户单元 `qs.service` 托管：崩溃后自动重启，锁屏中崩溃会自动重新加锁，避免 niri 停在红屏。
 
 ## 运行
 
+Quickshell 由 systemd 用户单元 `qs.service` 启动，`qs.service` 又通过 `niri.service.wants/` 随 niri 会话拉起：
+
 ```sh
+systemctl --user daemon-reload
+systemctl --user enable qs.service
+systemctl --user start qs.service
+```
+
+单元文件在 `~/.config/systemd/user/qs.service`（指向本目录的 `qs.service`）。它提供：
+
+- `Restart=always`：shell 崩溃或被 OOM 杀掉后自动拉起；
+- `OOMPolicy=continue`：从顶栏启动的应用被 OOM 杀掉时，不连带停掉 Quickshell；
+- `ExecStartPost=relock.sh`：重启时如果 logind 仍报告 `LockedHint=yes`，让新进程重新加锁，替换 niri 保留的 dead lock；
+- 日志统一进 journal：`journalctl --user -u qs.service -f`。
+
+调试时可以先停掉服务，再前台运行：
+
+```sh
+systemctl --user stop qs.service
 qs -c niri
 ```
 
-或直接指定路径：
-
-```sh
-qs -p ~/.config/quickshell/niri
-```
-
-后台运行：
-
-```sh
-qs -d -c niri
-```
-
-如果要在 niri 登录时替换 Waybar，把 `~/.config/niri/config.kdl` 里的
-
-```kdl
-spawn-at-startup "waybar"
-```
-
-改成
-
-```kdl
-spawn-at-startup "qs" "-c" "niri"
-```
-
-不要同时启动两者，否则两个顶部栏会重叠。
+不要同时使用 niri 的 `spawn-at-startup "qs" "-c" "niri"` 和 `qs.service`，否则两个顶部栏会重叠。
 
 通知同样只能有一个守护进程：Quickshell 启动时会注册 `org.freedesktop.Notifications`，因此不要再启动 mako/dunst。仓库中已经：
 
@@ -41,7 +35,7 @@ spawn-at-startup "qs" "-c" "niri"
 
 需要恢复 mako 时执行 `systemctl --user unmask mako.service` 并取消 niri 配置里的注释。
 
-锁屏入口也已经接到 `~/.config/niri/config.kdl`：`Super+Alt+L`、swayidle 的 5 分钟超时和 `before-sleep` 都执行 `~/.config/quickshell/niri/lock.sh`。
+锁屏入口也已经接到 `~/.config/niri/config.kdl`：`Super+Alt+L`（带 `allow-when-locked=true`，可作红屏恢复键）、swayidle 的 5 分钟超时、`before-sleep` 和 `resume` 都执行 `~/.config/quickshell/niri/lock.sh`。
 
 ## 项目结构
 
@@ -53,7 +47,9 @@ niri/
 ├── Spotlight.qml              # Mod+Space/Alt+Space 启动器（应用搜索 + ! 命令 + = 算数）
 ├── Clipboard.qml              # Mod+V 剪贴板历史面板（cliphist 列表 + 搜索 + 文本/图片预览 + 删除）
 ├── Lockscreen.qml             # 锁屏：WlSessionLock、每屏壁纸、居中密码框、PAM 认证
-├── lock.sh                    # 锁屏入口：优先走 Quickshell IPC，失败回退 swaylock
+├── qs.service                 # systemd 用户单元：自动重启、OOM 策略、启动后重新加锁
+├── relock.sh                  # qs.service 的 ExecStartPost：锁屏中重启后重新加锁
+├── lock.sh                    # 锁屏入口：优先走 Quickshell IPC，失败回退 swaylock（等待锁就绪）
 ├── pam/
 │   └── quickshell             # 锁屏专用 PAM auth 配置（pam_faildelay + pam_unix）
 ├── Niri.qml                   # Singleton：订阅 niri JSON event-stream
@@ -169,8 +165,8 @@ niri/
   - 默认模式即时过滤 `DesktopEntries` 里的应用，匹配名称、GenericName、Keywords、Categories、Comment 和 desktop id；支持子序列模糊匹配，空格分隔多个关键词
   - `↑`/`↓`、`PageUp`/`PageDown`、`Ctrl+N`/`Ctrl+P`、`Tab`/`Shift+Tab` 移动选中项，`Enter` 启动；鼠标点击条目也可启动
   - 空查询按启动次数排序；启动次数保存在 `Quickshell.statePath("spotlight-usage.json")`，常用的应用会自动排到前面
-  - 启动走 `DesktopEntry.execute()`；图标用 `Quickshell.iconPath` 解析，绝对路径图标按 `file://` 处理
-  - `!` 前缀进入命令模式：`!` 后面的内容交给 `sh -c`，`Enter` 立即执行并关闭；没有额外的确认步骤
+  - 启动交给 niri（`niri msg action spawn`），每个应用获得独立的 systemd app scope；只有带 `workingDirectory` 的极少数条目仍走 `DesktopEntry.execute()`；图标用 `Quickshell.iconPath` 解析，绝对路径图标按 `file://` 处理
+  - `!` 前缀进入命令模式：`!` 后面的内容交给 `niri msg action spawn-sh`（内部仍是 `sh -c`），`Enter` 立即执行并关闭；没有额外的确认步骤
   - `=` 前缀进入算数模式：支持 `+ - * / % ^`、括号、正负号、小数和科学计数法，输入时实时显示结果；`Enter` 把结果复制到剪贴板并关闭
   - 空查询时脚注会提示 `! command` 和 `= calculator`；命令/算数模式也会显示对应的操作提示
   - 多屏时在 niri 焦点窗口所在的输出打开；没有焦点窗口时回退到第一块屏幕
@@ -187,8 +183,10 @@ niri/
   - 壁纸默认是 `~/wallpapers/1-1.jpg`；可以在启动 Quickshell 前用 `QS_LOCK_WALLPAPER` 环境变量覆盖，或直接改 `Lockscreen.qml` 里的 `wallpaper`
   - 密码框居中，按 `Enter` 提交；认证期间输入框只读并显示“验证中…”，失败后清空输入并在下方显示错误
   - 认证走 `pam/quickshell`（`pam_faildelay.so delay=2000000` + `pam_unix.so`），只做密码认证，不改系统 `/etc/pam.d/login` 或 swaylock 的配置
-  - `swayidle` 的 5 分钟超时和 `before-sleep` 都调用 `lock.sh`；脚本通过 `qs -c niri ipc call lock lock` 加锁，并等待 `isSecure` 为 true（最多约 2 秒）再返回，避免睡眠前锁屏还没盖住屏幕
-  - Quickshell 没运行或旧版本没有 `lock` IPC 时，`lock.sh` 回退到 `swaylock -f`
+  - `swayidle` 的 5 分钟超时、`before-sleep` 和 `resume` 都调用 `lock.sh`；脚本通过 `qs -c niri ipc call lock lock` 加锁，并等待 `isSecure` 为 true（最多约 3 秒）再返回，避免睡眠前锁屏还没盖住屏幕
+  - Quickshell 没运行或旧版本没有 `lock` IPC 时，`lock.sh` 回退到 `swaylock -f`；回退路径用 swaylock 的 ready-fd（`-R 3`）等到锁真正映射后才返回，避免 `before-sleep` 抢先挂起
+  - 锁屏期间 Quickshell 崩溃后，`qs.service` 会自动重启，`relock.sh` 检测到 `LockedHint=yes` 就让新进程重新请求 `WlSessionLock`，niri 会替换 dead lock，不会停在红屏
+  - 如果仍然停在红屏，按 `Super+Alt+L`（niri bind 带 `allow-when-locked=true`）会重新拉起锁屏；Quickshell 也没起来时由 `lock.sh` 回退到 swaylock
   - IPC：`qs -c niri ipc call lock lock|isLocked|isSecure`
 
 ## 视觉复刻的关键点
@@ -218,11 +216,11 @@ NetworkManager ────> Network.qml <── /proc/net/dev（5s 一次带宽
 BlueZ ─────────────> Bluetooth.qml
 UPower ────────────> Battery.qml
 /sys/firmware/acpi/platform_profile ──> Battery.qml（电源模式图标）
-Battery.qml ──> niri focus-window / rog-control-center（左键）
+Battery.qml ──> niri focus-window / niri spawn rog-control-center（左键）
 Battery.qml ──> asusctl profile next（右键）
 StatusNotifier ────> Tray.qml
 DesktopEntries ────> Spotlight.qml（应用搜索 + 启动频率）
-Spotlight.qml ─────> sh -c（! 命令）
+Spotlight.qml ─────> niri msg action spawn / spawn-sh（每个应用独立 app scope）
 Spotlight.qml ─────> Quickshell.clipboardText（= 结果复制）
 cliphist ──────────> Clipboard.qml（list / decode / delete）
 Clipboard.qml ─────> wl-copy（文本/图片写回剪贴板）
@@ -231,7 +229,10 @@ D-Bus Notifications ──> Notifications.qml ──┬─> NotificationPopup.qm
                                              └─> NotificationCenter.qml（历史）
 Quickshell.Wayland.WlSessionLock ──> Lockscreen.qml（每屏壁纸 + 居中密码框）
 Quickshell.Services.Pam ──> pam/quickshell ──> pam_unix（密码认证）
+qs.service ──> qs -c niri（Restart=always，OOMPolicy=continue）
+relock.sh ──> lock.sh（仅当 logind LockedHint=yes）
 lock.sh ──> qs -c niri ipc call lock lock ──> Lockscreen.qml（等待 isSecure）
+lock.sh ──> swaylock -f（Quickshell IPC 不可用时的兜底）
 ```
 
 `Niri.qml` 直接监听 `niri msg --json event-stream`。该流启动时会先发送 `WorkspacesChanged` 和 `WindowsChanged`，因此不需要额外轮询 niri。
@@ -271,8 +272,8 @@ lock.sh ──> qs -c niri ipc call lock lock ──> Lockscreen.qml（等待 is
 - `Mod+Space` / `Alt+Space` 由 niri 的 bind 触发（两者都是 `spawn "qs" "-c" "niri" "ipc" "call" "spotlight" "toggle"`）。Quickshell 没运行时按快捷键不会有反应；`qs ipc` 需要通过 `-c niri` 选择这个配置实例。
 - Spotlight 打开时会占据整个屏幕的输入层，打开期间其他应用的鼠标点击不会穿透；关闭后 niri 会把键盘焦点还给原来的窗口。
 - 锁屏目前只有壁纸、密码框和错误提示，没有时钟、媒体控制、电量、用户切换或指纹；PAM 配置只跑 `pam_unix`。要加入指纹，在 `pam/quickshell` 的 `auth required pam_unix.so` 前面加一行 `auth sufficient pam_fprintd.so`，并确认 fprintd 已登记指纹。
-- 锁屏和顶栏在同一个 Quickshell 进程里，`lock` 只是设置 `WlSessionLock.locked`，不会重启或退出 `qs`。因此锁屏期间不要 `qs kill`、重启 Quickshell 或结束它的进程：按 ext-session-lock-v1 的约定，锁客户端消失后合成器会继续保持锁定（通常显示纯色），会话会变得不可操作。`qs` 的 QML 热重载对 `WlSessionLock` 是 Reloadable 的，但如果要修改锁屏代码，建议先解锁再改。
-- `lock.sh` 只在开始加锁时检查 Quickshell 是否可用；如果锁屏过程中 Quickshell 崩溃，脚本不会介入，因为此时已经没有可调用的 IPC。日常使用中不要把 `swaylock` 卸载掉，它是 Quickshell 不在时的兜底。
+- 锁屏和顶栏在同一个 Quickshell 进程里，`lock` 只是设置 `WlSessionLock.locked`，不会重启或退出 `qs`。锁屏期间 Quickshell 崩溃时：`qs.service` 会自动重启（`Restart=always`），`relock.sh` 在 `LockedHint=yes` 时让新进程重新加锁，niri 会把 dead lock 替换掉；直接 `kill`、`qs kill` 或被 OOM 杀掉都会触发这个重启。只有显式 `systemctl --user stop qs.service` 会让它保持停止，此时会停在 niri 的红屏；按 `Super+Alt+L` 即可拉起新锁屏（bind 已带 `allow-when-locked=true`），或从其他 TTY 执行 `WAYLAND_DISPLAY=wayland-1 swaylock`。`qs` 的 QML 热重载对 `WlSessionLock` 是 Reloadable 的，但改锁屏代码仍建议先解锁。
+- `lock.sh` 在开始加锁时检查 Quickshell IPC；如果锁屏过程中 Quickshell 崩溃，systemd 会重启它并重新加锁。日常使用中仍不要卸载 `swaylock`，它是 Quickshell 完全不可用时的兜底。
 - 锁屏壁纸只支持本地路径（`Image` 直接读取），路径由 `QS_LOCK_WALLPAPER` 或 `Lockscreen.qml` 决定；不会自动跟随 `spawn-at-startup "swaybg"` 的壁纸变化。
 - 多屏时每块屏幕都会生成一个 lock surface，共享同一个 PAM 会话和错误状态；密码框在每块屏幕居中，但键盘焦点由合成器交给其中一块屏幕。当前只有 eDP-1，未在真实多屏上验证。
 - 密码错误会经过 `pam_faildelay` 的 2 秒延迟再返回，避免快速暴力尝试；这 2 秒内输入框保持只读。
