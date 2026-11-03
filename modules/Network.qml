@@ -528,7 +528,7 @@ Module {
           Layout.fillWidth: true
           Layout.preferredHeight: 34
           radius: 6
-          color: wifiToggleMouse.containsMouse && root.wifiDevice ? Theme.rowHover : "transparent"
+          color: wifiToggleMouse.containsMouse && root.wifiDevice ? Theme.rowHover : Theme.clear(Theme.rowHover)
 
           Behavior on color {
             ColorAnimation {

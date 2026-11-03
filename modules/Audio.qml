@@ -501,7 +501,7 @@ Module {
                 Rectangle {
                   anchors.fill: parent
                   radius: 6
-                  color: streamHover.hovered ? Theme.rowHover : "transparent"
+                  color: streamHover.hovered ? Theme.rowHover : Theme.clear(Theme.rowHover)
 
                   Behavior on color {
                     ColorAnimation {

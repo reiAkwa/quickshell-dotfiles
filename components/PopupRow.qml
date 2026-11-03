@@ -23,7 +23,7 @@ Item {
   Rectangle {
     anchors.fill: parent
     radius: 6
-    color: mouse.containsMouse && root.interactive ? Theme.rowHover : "transparent"
+    color: mouse.containsMouse && root.interactive ? Theme.rowHover : Theme.clear(Theme.rowHover)
 
     Behavior on color {
       ColorAnimation {

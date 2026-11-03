@@ -414,7 +414,7 @@ Module {
           Layout.fillWidth: true
           Layout.preferredHeight: 34
           radius: 6
-          color: adapterToggleMouse.containsMouse && root.adapter ? Theme.rowHover : "transparent"
+          color: adapterToggleMouse.containsMouse && root.adapter ? Theme.rowHover : Theme.clear(Theme.rowHover)
 
           Behavior on color {
             ColorAnimation {

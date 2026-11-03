@@ -447,7 +447,7 @@ PanelWindow {
             radius: 6
             color: rowHover.hovered || root.pendingKillPid === processRow.pid
               ? Theme.rowHover
-              : "transparent"
+              : Theme.clear(Theme.rowHover)
 
             Behavior on color {
               ColorAnimation {

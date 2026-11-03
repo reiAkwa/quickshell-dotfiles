@@ -274,7 +274,7 @@ Module {
                 Rectangle {
                   anchors.fill: parent
                   radius: 6
-                  color: rowHover.hovered ? Theme.rowHover : "transparent"
+                  color: rowHover.hovered ? Theme.rowHover : Theme.clear(Theme.rowHover)
 
                   Behavior on color {
                     ColorAnimation {

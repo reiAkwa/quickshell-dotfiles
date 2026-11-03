@@ -50,6 +50,15 @@ Singleton {
   readonly property int moduleRadius: 10
   readonly property int modulePadding: 10
 
+  // A fully transparent copy of `color`, keeping its hue. A ColorAnimation
+  // between a real colour and the literal "transparent" interpolates through
+  // transparent *black*, so a hover highlight flashes dark grey before it
+  // settles on the tint. Fading between a colour and its own zero-alpha copy
+  // only moves the alpha channel.
+  function clear(color) {
+    return Qt.rgba(color.r, color.g, color.b, 0);
+  }
+
   // GTK resolves the CSS to 11pt in the original bar. At 96 DPI that is
   // 14.666px; 14px produces the same 7px Iosevka advance width.
   readonly property int fontSize: 14

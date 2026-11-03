@@ -810,7 +810,7 @@ PanelWindow {
               radius: 8
               color: row.selected
                 ? Theme.accent
-                : (mouse.containsMouse ? Theme.rowHover : "transparent")
+                : (mouse.containsMouse ? Theme.rowHover : Theme.clear(Theme.rowHover))
 
               Behavior on color {
                 ColorAnimation {
